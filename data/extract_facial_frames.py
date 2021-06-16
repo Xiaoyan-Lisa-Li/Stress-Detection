@@ -44,11 +44,12 @@ def extract_frames(path_video, path_rest_img,path_focus_img, video):
             face_frame = cv2.resize(face_frame, frame_size)
                
         
-        if (vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 120000) or (vidcap.get(cv2.CAP_PROP_POS_MSEC) > 300000):
+        if ((vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 120000) or (vidcap.get(cv2.CAP_PROP_POS_MSEC) >= 300000)) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 540000):
             cv2.imwrite(path_rest_img+"rest_%s_frame%d.jpg"%(video, count), face_frame)     # save rest frame as JPEG file 
-        else:
+            print('Read a new frame(rest): %d'%(vidcap.get(cv2.CAP_PROP_POS_MSEC)))
+        elif (vidcap.get(cv2.CAP_PROP_POS_MSEC) > 120000) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) < 300000):
             cv2.imwrite(path_focus_img+"focus_%s_frame%d.jpg"%(video, count), face_frame)   # save frame as JPEG file 
-        
+            print('Read a new frame(focus): %d'%(vidcap.get(cv2.CAP_PROP_POS_MSEC)))
          
         count += 1
         last_ts = vidcap.get(cv2.CAP_PROP_POS_MSEC)
