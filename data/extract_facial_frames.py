@@ -54,14 +54,12 @@ def extract_frames(path_video, path_rest_img,path_focus_img, video):
         last_ts = vidcap.get(cv2.CAP_PROP_POS_MSEC)
         success,image = vidcap.read()
         print('Read a new frame: ', success)
-      
-      
-      
+
 if __name__=="__main__":
 
-    path_video = './videos/'
-    path_rest_img = './images/rest/'
-    path_focus_img = './images/focus/'
+    path_video = './data/videos/'
+    path_rest_img = './data/images/rest/'
+    path_focus_img = './data/images/focus/'
     
     # if not os.path.exists(path_video):
     #     os.makedirs(path_video)
@@ -71,8 +69,9 @@ if __name__=="__main__":
         os.makedirs(path_focus_img)
         
     # print(args)
-    video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','0010-1'\
-                  ,'0011-1','0013-1','0015-1','0017-1','0018-1','0019-1','0021-1','0022-1','0023-1',\
-                  '0025-1', '0026-1','0027-1','0028-1','0030-1','0032-1']
-    for i in range(len(video_nums)):
-        extract_frames(path_video, path_rest_img,path_focus_img, video_nums[i])      
+    # video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','0010-1'\
+    #               ,'0011-1','0013-1','0015-1','0017-1','0018-1','0019-1','0021-1','0022-1','0023-1',\
+    #               '0025-1', '0026-1','0027-1','0028-1','0030-1','0032-1']
+    # for i in range(len(video_nums)):
+    #     extract_frames(path_video, path_rest_img,path_focus_img, video_nums[i])      
+    extract_frames(path_video, path_rest_img,path_focus_img, '005-1')      
