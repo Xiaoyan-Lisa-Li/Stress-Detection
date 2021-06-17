@@ -69,8 +69,8 @@ def create_datasets():
     ## please test if the image and label pairs are correct
     
     ######################################################
-    # creat_csv(rest_csv, image_dir+'rest/', label_rest)
-    # creat_csv(focus_csv, image_dir+'focus/',label_focus)
+    creat_csv(rest_csv, image_dir+'rest/', label_rest)
+    creat_csv(focus_csv, image_dir+'focus/',label_focus)
     
     rest_dataset = FacialImagesDataset(csv_file = rest_csv, root_dir = image_dir + 'rest/',
                                        transform = transforms.ToTensor())
