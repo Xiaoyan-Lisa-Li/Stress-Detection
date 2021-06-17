@@ -16,6 +16,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import torchvision
+import math
 
 class FacialImagesDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
@@ -84,8 +85,13 @@ def create_datasets():
     img_dataset = torch.utils.data.ConcatDataset([rest_dataset, focus_dataset])
     print(len(img_dataset))
     
-    ### for testing, only 338 images are used. 228 is the number of train_set, and 100 is the number of test_data. 
-    train_set, test_set = torch.utils.data.random_split(img_dataset, [228,100]) 
+    ### original for testing, only 338 images are used. 228 is the number of train_set, and 100 is the number of test_data. 
+    # train_set, test_set = torch.utils.data.random_split(img_dataset, [228,100]) 
+    
+    ##Elizabeth test just 105+24 images
+    # print(math.floor(len(img_dataset)*0.8))
+    # print(round(len(img_dataset)*0.2))
+    train_set, test_set = torch.utils.data.random_split(img_dataset, [math.floor(len(img_dataset)*0.8),round(len(img_dataset)*0.2)]) 
     
     train_loader = DataLoader(dataset=train_set, batch_size = batch_size, shuffle=True)
     test_loader = DataLoader(dataset=test_set, batch_size = batch_size, shuffle=True)
