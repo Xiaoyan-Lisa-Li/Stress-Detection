@@ -85,10 +85,10 @@ def create_datasets():
     img_dataset = torch.utils.data.ConcatDataset([rest_dataset, focus_dataset])
     print(len(img_dataset))
     
-    ### original for testing, only 338 images are used. 228 is the number of train_set, and 100 is the number of test_data. 
+    ### original code for testing, only 338 images are used. 228 is the number of train_set, and 100 is the number of test_data. 
     # train_set, test_set = torch.utils.data.random_split(img_dataset, [228,100]) 
     
-    ##Elizabeth test just 105+24 images
+    ##Elizabeth modied code for testing
     # print(math.floor(len(img_dataset)*0.8))
     # print(round(len(img_dataset)*0.2))
     train_set, test_set = torch.utils.data.random_split(img_dataset, [math.floor(len(img_dataset)*0.8),round(len(img_dataset)*0.2)]) 
