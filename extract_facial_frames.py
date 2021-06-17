@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Jun 13 22:27:21 2021
 
-@author: Xiaoyan
-"""
 import sys
 import os
 import argparse
@@ -75,5 +71,4 @@ if __name__=="__main__":
                   '0025-1', '0026-1','0027-1','0028-1','0030-1','0032-1']
     for i in range(len(video_nums)):
         extract_frames(path_video, path_rest_img,path_focus_img, video_nums[i])  
-    #below is a test line by Elizabeth    
-    # extract_frames(path_video, path_rest_img,path_focus_img, '005-1')    
+ 

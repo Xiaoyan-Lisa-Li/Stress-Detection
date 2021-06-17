@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Jun 13 22:27:21 2021
 
-@author: Xiaoyan
-"""
 
 import csv
 import os
@@ -67,10 +63,7 @@ def create_datasets():
     label_rest = 0
     label_focus = 1
     
-    #######################################################
-    ## please test if the image and label pairs are correct
-    
-    ######################################################
+
     creat_csv(rest_csv, image_dir+'rest/', label_rest)
     creat_csv(focus_csv, image_dir+'focus/',label_focus)
     
@@ -84,9 +77,7 @@ def create_datasets():
 
     img_dataset = torch.utils.data.ConcatDataset([rest_dataset, focus_dataset])
     print(len(img_dataset))
-    
-    ### original code for testing, only 338 images are used. 228 is the number of train_set, and 100 is the number of test_data. 
-    # train_set, test_set = torch.utils.data.random_split(img_dataset, [228,100]) 
+   
     
     ##Elizabeth modied code for testing
     # print(math.floor(len(img_dataset)*0.8))
