@@ -40,8 +40,9 @@ class FacialImagesDataset(Dataset):
 
 def creat_csv(csv_file, path, label):
     '''
-    since use model = 'a'  in "with open(csv_file, 'a', newline='')" , when do testing, we need to delect the generated file: focus.csv and rest.csv. 
-    
+    since use model = 'a'  in "with open(csv_file, 'a', newline='')" , when do testing, 
+    each time we need to create new files: focus.csv and rest.csv. 
+    Another ways to save data could be explored.
     '''
     with open(csv_file, 'a', newline='') as file:
         writer = csv.writer(file)
