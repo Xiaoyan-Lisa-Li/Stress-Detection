@@ -59,14 +59,15 @@ def train_model(model, train_loader, num_epochs):
         avg_loss = 0.
 
         for x_batch, y_batch in progress_bar(train_loader, parent=mb):
-            preds = model(x_batch.cuda())
-            loss = criterion(preds, y_batch.cuda())
+          sleep(0.2)
+          preds = model(x_batch.cuda())
+          loss = criterion(preds, y_batch.cuda())
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+          optimizer.zero_grad()
+          loss.backward()
+          optimizer.step()
 
-            avg_loss += loss.item() / len(train_loader)
+          avg_loss += loss.item() / len(train_loader)
 
 
           
