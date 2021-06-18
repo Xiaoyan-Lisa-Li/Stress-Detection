@@ -78,10 +78,6 @@ def create_datasets():
     img_dataset = torch.utils.data.ConcatDataset([rest_dataset, focus_dataset])
     print(len(img_dataset))
    
-    
-    ##Elizabeth modied code for testing
-    # print(math.floor(len(img_dataset)*0.8))
-    # print(round(len(img_dataset)*0.2))
     train_set, test_set = torch.utils.data.random_split(img_dataset, [math.floor(len(img_dataset)*0.8),round(len(img_dataset)*0.2)]) 
     
     train_loader = DataLoader(dataset=train_set, batch_size = batch_size, shuffle=True)
