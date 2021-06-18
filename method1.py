@@ -54,26 +54,27 @@ def train_model(model, train_loader, num_epochs):
     mb = master_bar(range(num_epochs))
     
     for epoch in mb:
-        # start_time = time.time()
-        model.train()
-        avg_loss = 0.
+      # start_time = time.time()
+      model.train()
+      avg_loss = 0.
 
-        for x_batch, y_batch in progress_bar(train_loader, parent=mb):
-          sleep(0.2)
-          preds = model(x_batch.cuda())
-          loss = criterion(preds, y_batch.cuda())
+      for x_batch, y_batch in progress_bar(train_loader, parent=mb):
+        sleep(0.2)
+        preds = model(x_batch.cuda())
+        optimizer.zero_grad()
+        loss = criterion(preds, y_batch.cuda())
 
-          optimizer.zero_grad()
-          loss.backward()
-          optimizer.step()
+        loss.backward()
+        optimizer.step()
 
-          avg_loss += loss.item() / len(train_loader)
+        avg_loss += loss.item() / len(train_loader)
 
+      mb.write(f'Finished epch {epoch+1}.')
 
-          
-        scheduler.step()
+      
+      scheduler.step()
 
-        return
+      return
 
     
 def predict_model():
