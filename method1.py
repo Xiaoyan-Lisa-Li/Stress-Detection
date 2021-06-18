@@ -58,16 +58,34 @@ def train_model(model, train_loader, num_epochs):
       model.train()
       avg_loss = 0.
 
-      for x_batch, y_batch in progress_bar(train_loader, parent=mb):
-        sleep(0.2)
-        preds = model(x_batch.cuda())
+      for i, sample_batch in enumerate(train_loader):
+        x_train, y_train = sample_batch
+        preds = model(x_train.cuda())
         optimizer.zero_grad()
-        loss = criterion(preds, y_batch.cuda())
+        loss = criterion(preds, y_train.cuda())
 
         loss.backward()
         optimizer.step()
+        print('Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(
+            epoch, epoch, i+1, len(train_loader),
+            loss.item()
+            ))
 
-        avg_loss += loss.item() / len(train_loader)
+      #original code below:
+      # for x_batch, y_batch in progress_bar(train_loader, parent=mb):
+      #   sleep(0.2)
+      #   preds = model(x_batch.cuda())
+      #   optimizer.zero_grad()
+      #   loss = criterion(preds, y_batch.cuda())
+
+      #   loss.backward()
+      #   optimizer.step()
+
+      #   avg_loss += loss.item() / len(train_loader)
+
+      # emulate train sub-loop
+    # for batch in progress_bar(range(2), parent=mb): sleep(0.2)
+    #   train_loss.append(0.5 - 0.06 * epoch + random.uniform(0, 0.04))
 
       mb.write(f'Finished epch {epoch+1}.')
 
