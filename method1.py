@@ -36,7 +36,7 @@ def initialize_weights(model):
       nn.init.kaiming_uniform_(model.weight.data)
       nn.init.constant_(model.bias.data, 0)
 
-def train_model(model, train_loader):
+def train_model(model, train_loader, num_epochs):
     eta_min = 1e-5
     t_max = 10
     optimizer = Adam(params=model.parameters(), lr=lr, amsgrad=False)
