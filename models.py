@@ -24,7 +24,7 @@ class CNN_Net(nn.Module):
         self.dense2 = nn.Linear(128, 1)
 
     def forward(self, x):
-        x = self.conv1_drop(F.max_pool2d(self.conv1_bn(F.relu(x)), 2))       
+        x = self.conv1_drop(F.max_pool2d(self.conv1_bn(F.relu(self.conv1(x)), 2)))       
         x = self.conv2_drop(F.max_pool2d(self.conv2_bn(F.relu(self.conv2(x)), 2)))
         x = x.view(-1, 1600) #reshape
         x = F.relu(self.dense1_bn(self.dense1(x)))

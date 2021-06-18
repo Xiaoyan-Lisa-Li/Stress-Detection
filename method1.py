@@ -18,7 +18,7 @@ from models import CNN_Net
 def seed_everything(seed):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
+    np.random.seed(seed) 
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
@@ -26,15 +26,20 @@ def seed_everything(seed):
 
 def initialize_weights(model):
   if isinstance(model, nn.Conv2d):
-      nn.init.kaiming_uniform_(model.weight.data,nonlinearity='relu')
+      if model.weight is not None:
+        nn.init.kaiming_uniform_(model.weight.data,nonlinearity='relu')
       if model.bias is not None:
           nn.init.constant_(model.bias.data, 0)
   elif isinstance(model, nn.BatchNorm2d):
-      nn.init.constant_(model.weight.data, 1)
-      nn.init.constant_(model.bias.data, 0)
+      if model.weight is not None:
+        nn.init.constant_(model.weight.data, 1)
+      if model.bias is not None:  
+        nn.init.constant_(model.bias.data, 0)
   elif isinstance(model, nn.Linear):
-      nn.init.kaiming_uniform_(model.weight.data)
-      nn.init.constant_(model.bias.data, 0)
+      if model.weight is not None:
+        nn.init.kaiming_uniform_(model.weight.data)
+      if model.bias is not None:
+        nn.init.constant_(model.bias.data, 0)
 
 def train_model(model, train_loader, num_epochs):
     eta_min = 1e-5
