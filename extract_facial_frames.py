@@ -8,7 +8,7 @@ import cv2
 import time
 
 faceCascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-frame_size = (200, 200)   # Final frame size to save video file
+frame_size = (28, 28)   # Final frame size to save video file
 
 def extract_frames(path_video, path_rest_img,path_focus_img, video):
     vidcap = cv2.VideoCapture(path_video +'StressTetris-1-'+video+'-iPhone-LightON.MOV')

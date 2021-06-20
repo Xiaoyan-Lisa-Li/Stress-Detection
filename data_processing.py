@@ -55,18 +55,11 @@ def creat_csv(csv_file, path, label):
                 else:
                     writer.writerow([name, 1])
                         
-def create_datasets():
+def create_datasets(batch_size):
     image_dir = './data/images/'
     rest_csv = image_dir+'rest.csv'
     focus_csv = image_dir+'focus.csv'
-    batch_size = 32
-    label_rest = 0
-    label_focus = 1
-    
 
-    creat_csv(rest_csv, image_dir+'rest/', label_rest)
-    creat_csv(focus_csv, image_dir+'focus/',label_focus)
-    
     rest_dataset = FacialImagesDataset(csv_file = rest_csv, root_dir = image_dir + 'rest/',
                                        transform = transforms.ToTensor())
     # print(len(rest_dataset))
@@ -78,7 +71,11 @@ def create_datasets():
     img_dataset = torch.utils.data.ConcatDataset([rest_dataset, focus_dataset])
     print(len(img_dataset))
    
-    train_set, test_set = torch.utils.data.random_split(img_dataset, [math.floor(len(img_dataset)*0.8),round(len(img_dataset)*0.2)]) 
+    
+    ##Elizabeth modied code for testing
+    # print(math.floor(len(img_dataset)*0.8))
+    # print(round(len(img_dataset)*0.2))
+    train_set, test_set = torch.utils.data.random_split(img_dataset, [round(len(img_dataset)*0.8),round(len(img_dataset)*0.2)]) 
     
     train_loader = DataLoader(dataset=train_set, batch_size = batch_size, shuffle=True)
     test_loader = DataLoader(dataset=test_set, batch_size = batch_size, shuffle=True)
@@ -88,8 +85,17 @@ def create_datasets():
 
 if __name__=="__main__":
     
-    train_loader, test_loader = create_datasets()
-    data_iter = iter(test_loader)
+    label_rest = 0
+    label_focus = 1
+    image_dir = './data/images/'
+    rest_csv = image_dir+'rest.csv'
+    focus_csv = image_dir+'focus.csv'
+    
+    creat_csv(rest_csv, image_dir+'rest/', label_rest)
+    creat_csv(focus_csv, image_dir+'focus/',label_focus)
+    
+    train_loader, test_loader = create_datasets(32)
+    data_iter = iter(train_loader)
     
     images, labels = next(data_iter)
     print('image size is',images.size()[0])
