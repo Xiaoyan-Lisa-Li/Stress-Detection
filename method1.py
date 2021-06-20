@@ -57,13 +57,37 @@ def predict(model, test_loader, checkpoint_path, epoch):
     model.eval()
     test_acc = 0
     total_num = 0
+    rest_true = 0
+    rest_false = 0
+    focus_true = 0
+    focus_false = 0
+    
     for i, sample_batch in enumerate(test_loader):
         x_test, y_test = sample_batch
         total_num += len(y_test)
         preds = model(x_test.cuda())
         print(preds)
-        test_acc += sum(torch.eq(y_test, torch.tensor([p.item() > 0.5 for p in preds.cpu().detach().numpy()])))
+        ### if preds > 0.5, preds = 1, otherwise, preds = 0
+        preds = torch.tensor([p.item() > 0.5 for p in preds.cpu().detach().numpy()])
+        test_acc += sum(torch.eq(y_test, preds))
         
+        ### calculate how many samples are predicted correctly.
+        for y, p in zip(y_test, preds):
+            if y == p and y.item() == 0:
+                rest_true += 1
+            elif y != p and y.item() == 0:
+                rest_false += 1
+            elif y == p and y.item() == 1:
+                focus_true += 1
+            else:
+                focus_false += 1
+                
+            
+    print("rest_true is ",rest_true)   
+    print("rest_false is ",rest_false)
+    print("focus_true is ",focus_true)
+    print("focus_false is ",focus_false)
+    print("total number of samples is: ",total_num)
 
     print("test accuracy is {}".format(test_acc.item()/total_num))
     return test_acc/total_num
