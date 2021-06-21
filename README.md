@@ -1,17 +1,16 @@
+# Data processing
+run `extract_facial_frames.py` to extract frames from videos.
+
+run `data_processing.py` to create csv files and datasets. Rest samples are labeled as "0" and focus samples are labeled as "1".
+
 # Stress-Detection
-  Method 1: 
+  Method 1: Stress detection using facial images that are randomly sampled and cropped from videos.
   
-  	Stress detection using facial images that are randomly sampled and cropped from videos.
+  run `method1.py`
 		
-  Method 2: 
-  
-    Stess detection using RGB signals. RGB signals are extraced from the region of interests (ROIs) that are identified by using Haar feature-based cascade classifiers. 
-    
-    
-		
-  Method 3: 
-  
-    Stress detection using the multimodel CNN framework.
+  Method 2: Stess detection using RGB signals. RGB signals are extraced from the region of interests (ROIs) that are identified by using Haar feature-based cascade classifiers. 
+    	
+  Method 3: Stress detection using the multimodel CNN framework.
     
  References
  
