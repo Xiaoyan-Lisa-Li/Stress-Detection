@@ -6,15 +6,26 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-# from fastprogress import master_bar, progress_bar
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import time 
 import random
 from torch.optim import Adam
 from data_processing import *
-from models import CNN_Net
+from models import *
+import matplotlib.pyplot as plt
+import torchvision.transforms as transforms
+import torchvision.models as models
 
 ### 
+def plot_loss(losses, label):
+    plt.figure(figsize=(10,5))
+    plt.title("Training {}".format(label))
+    plt.plot(losses,label=label)
+    plt.xlabel("iterations")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.show()
+    
 def seed_everything(seed):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -66,12 +77,20 @@ def predict(model, test_loader, checkpoint_path, epoch):
         x_test, y_test = sample_batch
         total_num += len(y_test)
         preds = model(x_test.cuda())
-        print(preds)
+        
+        
+# #############################################################################
+#          ### softmax        
+#         test_acc += (preds.argmax(dim=1) == target).sum().float()
+        
+###############################################################################
+### sigmoid        
         ### if preds > 0.5, preds = 1, otherwise, preds = 0
         preds = torch.tensor([p.item() > 0.5 for p in preds.cpu().detach().numpy()])
+        print(sum(torch.eq(y_test, preds)))
         test_acc += sum(torch.eq(y_test, preds))
-        
-        ### calculate how many samples are predicted correctly.
+       
+        ## calculate how many samples are predicted correctly.
         for y, p in zip(y_test, preds):
             if y == p and y.item() == 0:
                 rest_true += 1
@@ -81,65 +100,67 @@ def predict(model, test_loader, checkpoint_path, epoch):
                 focus_true += 1
             else:
                 focus_false += 1
-                
-            
     print("rest_true is ",rest_true)   
     print("rest_false is ",rest_false)
     print("focus_true is ",focus_true)
     print("focus_false is ",focus_false)
     print("total number of samples is: ",total_num)
 
+        
     print("test accuracy is {}".format(test_acc.item()/total_num))
     return test_acc/total_num
 
 def train_model(model, train_loader, num_epochs, checkpoint_path):
-    eta_min = 1e-5
-    t_max = 10
-        
-    
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
         
-    optimizer = Adam(params=model.parameters(), lr=lr, amsgrad=False)
-    criterion = nn.MSELoss().cuda()
-    scheduler = CosineAnnealingLR(optimizer, T_max=t_max, eta_min=eta_min)
-
-
-    # best_epoch = -1
-    # best_lwlrap = 0.
-    # mb = master_bar(range(num_epochs))
-    model.train()
+    # optimizer = Adam(params=model.parameters(), lr=lr, amsgrad=False)
+    # criterion = nn.CrossEntropyLoss().cuda()
     
-    for epoch in range(num_epochs):    
+    optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
+    criterion = nn.MSELoss().cuda()
+
+    model.train()
+
+    train_losses = []
+    for epoch in range(num_epochs): 
+        losses = 0
         avg_loss = 0.
-        print(train_loader)
+        
+        # print(train_loader)
         for i, sample_batch in enumerate(train_loader):
         
             x_train, y_train = sample_batch
             preds = model(x_train.cuda())
             optimizer.zero_grad()
-            loss = criterion(preds, y_train.float().cuda())
-            
-            avg_loss += loss.item() / len(train_loader)
+
+            loss = criterion(preds, y_train.cuda().float())
+            # loss = criterion(preds, y_train.cuda().long())
             
             loss.backward()
             optimizer.step()
-            print('Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(
-                epoch+1, num_epochs, i+1, len(train_loader), loss.item()))
+            
+            losses += loss.item()
+            
+        avg_loss = losses / len(train_loader)            
+        train_losses.append(loss.item()) 
+        
+        print('Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(
+            epoch+1, num_epochs, i+1, len(train_loader), loss.item()))
        
         save_objs(model, epoch+1, avg_loss, optimizer, checkpoint_path)
-        
-        scheduler.step()
 
     
-def predict_model():
-    pass
+    plot_loss(train_losses, label='train')
+
     
 if __name__=="__main__":
     
-    num_epochs = 100
-    batch_size = 32
-    lr = 3e-3
+    # frame_size = (224,224)
+    frame_size = (28,28)
+    num_epochs = 500
+    batch_size = 32 
+    lr = 1e-4
     
     SEED = 2019
     seed_everything(SEED)
@@ -147,10 +168,47 @@ if __name__=="__main__":
     
     checkpoint_path = './check_point/'
     
-    train_loader, test_loader = create_datasets(batch_size)
-   
+    image_dir = './data/images_{}x{}/'.format(frame_size[0],frame_size[1])
+    image_train_dir = './data/images_train_{}x{}/'.format(frame_size[0],frame_size[1])
+    image_test_dir = './data/images_test_{}x{}/'.format(frame_size[0],frame_size[1])
+    
+    rest_csv = 'rest.csv'
+    focus_csv = 'focus.csv'
+    
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    
+    ### data augmentation
+    transform_t = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.RandomRotation(30),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    
+
+    ## both trian and test data are from all 25 videos
+    train_loader, test_loader = create_datasets(batch_size,transform, transform_t, image_dir, rest_csv, focus_csv)
+    
+    # ### trian data is from first 21 videos and test data is from last 4 videos.
+    # train_loader, test_loader = create_datasets2(batch_size,transform, transform_t, image_train_dir, image_test_dir, rest_csv, focus_csv)
+    
+    ##########################################################################
+    ## using CNN with inputs size 28x28
+    ##########################################################################
     model=CNN_Net().cuda()
     model.apply(initialize_weights)
     
-    # train_model(model, train_loader, num_epochs, checkpoint_path)
+    # ###########################################################################
+    # ### using pretrained vgg11 with inputs size 224x224
+    # ###########################################################################
+    # model = alexnet()
+    
+    ### train model
+    train_model(model, train_loader, num_epochs, checkpoint_path)
+    
     predict(model, test_loader, checkpoint_path, num_epochs)
+    
