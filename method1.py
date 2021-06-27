@@ -196,16 +196,16 @@ if __name__=="__main__":
     # ### trian data is from first 21 videos and test data is from last 4 videos.
     # train_loader, test_loader = create_datasets2(batch_size,transform, transform_t, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
-    ##########################################################################
-    ## using CNN with inputs size 28x28
-    ##########################################################################
-    model=CNN_Net().cuda()
-    model.apply(initialize_weights)
+    # ##########################################################################
+    # ## using CNN with inputs size 28x28
+    # ##########################################################################
+    # model=CNN_Net().cuda()
+    # model.apply(initialize_weights)
     
-    # ###########################################################################
-    # ### using pretrained vgg11 with inputs size 224x224
-    # ###########################################################################
-    # model = alexnet()
+    ###########################################################################
+    ### using pretrained vgg11 with inputs size 224x224
+    ###########################################################################
+    model = alexnet()
     
     ### train model
     train_model(model, train_loader, num_epochs, checkpoint_path)

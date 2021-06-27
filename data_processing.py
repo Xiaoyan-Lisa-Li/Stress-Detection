@@ -147,28 +147,28 @@ if __name__=="__main__":
     ])
     
     
-    # creat_csv(image_dir + rest_csv, image_dir +'rest/', label_rest)
-    # creat_csv(image_dir + focus_csv, image_dir +'focus/',label_focus)
+    creat_csv(image_dir + rest_csv, image_dir +'rest/', label_rest)
+    creat_csv(image_dir + focus_csv, image_dir +'focus/',label_focus)
     
-    # creat_csv(image_train_dir + rest_csv, image_train_dir +'rest/', label_rest)
-    # creat_csv(image_train_dir + focus_csv, image_train_dir +'focus/',label_focus)    
+    creat_csv(image_train_dir + rest_csv, image_train_dir +'rest/', label_rest)
+    creat_csv(image_train_dir + focus_csv, image_train_dir +'focus/',label_focus)    
     
-    # creat_csv(image_test_dir + rest_csv, image_test_dir +'rest/', label_rest)
-    # creat_csv(image_test_dir + focus_csv, image_test_dir +'focus/',label_focus)   
+    creat_csv(image_test_dir + rest_csv, image_test_dir +'rest/', label_rest)
+    creat_csv(image_test_dir + focus_csv, image_test_dir +'focus/',label_focus)   
     
-    # ##########################################################################
-    # ### both trian and test data are from all 25 videos
-    # ###########################################################################
-    # train_loader, test_loader = create_datasets(batch_size,transform, transform_t, image_dir, rest_csv, focus_csv)
-    # data_iter = iter(train_loader)
+    ##########################################################################
+    ### both trian and test data are from all 25 videos
+    ###########################################################################
+    train_loader, test_loader = create_datasets(batch_size,transform, transform_t, image_dir, rest_csv, focus_csv)
+    data_iter = iter(train_loader)
     
-    # images, labels = next(data_iter)
-    # print('image size is',images.size()[0])
-    # print('the corresponding label are: ', labels)
+    images, labels = next(data_iter)
+    print('image size is',images.size()[0])
+    print('the corresponding label are: ', labels)
     
-    # plt.imshow(torchvision.utils.make_grid(images, nrow=5).permute(1, 2, 0))
+    plt.imshow(torchvision.utils.make_grid(images, nrow=5).permute(1, 2, 0))
         
-    # plt.show()
+    plt.show()
    
     ###########################################################################
     ### trian data is from first 21 videos and test data is from last 4 videos.
