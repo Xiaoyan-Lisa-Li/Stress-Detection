@@ -119,7 +119,7 @@ def create_datasets2(batch_size, transform, transform_t, image_train_dir, image_
     return train_loader, test_loader
 
 if __name__=="__main__":
-    batch_size = 16
+    batch_size = 32
     frame_size = (224,224)
     label_rest = 0
     label_focus = 1
@@ -150,11 +150,11 @@ if __name__=="__main__":
     creat_csv(image_dir + rest_csv, image_dir +'rest/', label_rest)
     creat_csv(image_dir + focus_csv, image_dir +'focus/',label_focus)
     
-    creat_csv(image_train_dir + rest_csv, image_train_dir +'rest/', label_rest)
-    creat_csv(image_train_dir + focus_csv, image_train_dir +'focus/',label_focus)    
+   # creat_csv(image_train_dir + rest_csv, image_train_dir +'rest/', label_rest)
+   # creat_csv(image_train_dir + focus_csv, image_train_dir +'focus/',label_focus)    
     
-    creat_csv(image_test_dir + rest_csv, image_test_dir +'rest/', label_rest)
-    creat_csv(image_test_dir + focus_csv, image_test_dir +'focus/',label_focus)   
+   # creat_csv(image_test_dir + rest_csv, image_test_dir +'rest/', label_rest)
+   # creat_csv(image_test_dir + focus_csv, image_test_dir +'focus/',label_focus)   
     
     ##########################################################################
     ### both trian and test data are from all 25 videos

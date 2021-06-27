@@ -91,16 +91,4 @@ if __name__=="__main__":
     for i in range(len(video_nums)):
         extract_frames(path_video, path_rest_img, path_focus_img, video_nums[i], frame_size)  
         
-       
-    ### extract images from imgage_train folder
-    video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','010-1'\
-                  ,'011-1','013-1','015-1','017-1','018-1','019-1','021-1','022-1','023-1',\
-                  '025-1', '026-1']
-    for i in range(len(video_nums)):
-        extract_frames(path_video, path_train_rest, path_train_focus, video_nums[i], frame_size)  
-        
-    # extract images from imgage folder
-    video_nums = ['027-1','028-1','030-1','032-1']
-    for i in range(len(video_nums)):
-        extract_frames(path_video, path_test_rest, path_test_focus, video_nums[i], frame_size)  
-        
+    
