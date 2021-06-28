@@ -41,7 +41,7 @@ class alexnet(nn.Module):
 
     def __init__(self, num_classes: int = 1) -> None:
         super(alexnet, self).__init__()
-        self.net = models.vgg19(pretrained=True)
+        self.net = models.vgg11(pretrained=True)
         for p in self.net.features.parameters():
             p.requires_grad=False
         self.net.classifier[-1] = nn.Linear(4096, num_classes)

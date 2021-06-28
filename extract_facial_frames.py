@@ -54,7 +54,7 @@ def extract_frames(path_video, path_rest,path_focus, video, frame_size):
 
 if __name__=="__main__":
     
-    frame_size = (224, 224)   # Final frame size to save video file
+    frame_size = (28, 28)   # Final frame size to save video file
 
     path_video = './data/videos/'
     
@@ -84,11 +84,23 @@ if __name__=="__main__":
         os.makedirs(path_test_focus)        
         
         
-    # extract images from imgage folder
+    # # extract images from imgage folder
+    # video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','010-1'\
+    #               ,'011-1','013-1','015-1','017-1','018-1','019-1','021-1','022-1','023-1',\
+    #               '025-1', '026-1','027-1','028-1','030-1','032-1','027-1','028-1']
+    # for i in range(len(video_nums)):
+    #     extract_frames(path_video, path_rest_img, path_focus_img, video_nums[i], frame_size)  
+        
+       
+    ### extract images from imgage_train folder
     video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','010-1'\
                   ,'011-1','013-1','015-1','017-1','018-1','019-1','021-1','022-1','023-1',\
-                  '025-1', '026-1','027-1','028-1','030-1','032-1']
+                  '025-1', '026-1']
     for i in range(len(video_nums)):
-        extract_frames(path_video, path_rest_img, path_focus_img, video_nums[i], frame_size)  
+        extract_frames(path_video, path_train_rest, path_train_focus, video_nums[i], frame_size)  
         
-    
+    # extract images from imgage_test folder
+    video_nums = ['030-1','032-1']
+    for i in range(len(video_nums)):
+        extract_frames(path_video, path_test_rest, path_test_focus, video_nums[i], frame_size)  
+        

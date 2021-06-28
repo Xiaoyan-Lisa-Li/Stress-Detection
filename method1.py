@@ -83,11 +83,14 @@ def predict(model, test_loader, checkpoint_path, epoch):
 #          ### softmax        
 #         test_acc += (preds.argmax(dim=1) == target).sum().float()
         
+
+
 ###############################################################################
 ### sigmoid        
         ### if preds > 0.5, preds = 1, otherwise, preds = 0
+        # print(preds)
         preds = torch.tensor([p.item() > 0.5 for p in preds.cpu().detach().numpy()])
-        print(sum(torch.eq(y_test, preds)))
+
         test_acc += sum(torch.eq(y_test, preds))
        
         ## calculate how many samples are predicted correctly.
@@ -115,10 +118,10 @@ def train_model(model, train_loader, num_epochs, checkpoint_path):
         os.makedirs(checkpoint_path)
         
     # optimizer = Adam(params=model.parameters(), lr=lr, amsgrad=False)
-    # criterion = nn.CrossEntropyLoss().cuda()
-    
+    criterion = nn.BCELoss().cuda()
+     
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-    criterion = nn.MSELoss().cuda()
+    criterion = nn.BCELoss().cuda()
 
     model.train()
 
@@ -134,7 +137,7 @@ def train_model(model, train_loader, num_epochs, checkpoint_path):
             preds = model(x_train.cuda())
             optimizer.zero_grad()
 
-            loss = criterion(preds, y_train.cuda().float())
+            loss = criterion(preds.squeeze(), y_train.cuda().float())
             # loss = criterion(preds, y_train.cuda().long())
             
             loss.backward()
@@ -156,9 +159,9 @@ def train_model(model, train_loader, num_epochs, checkpoint_path):
     
 if __name__=="__main__":
     
-    # frame_size = (224,224)
-    frame_size = (28,28)
-    num_epochs = 500
+    frame_size = (224,224)
+    # frame_size = (28,28)
+    num_epochs = 200
     batch_size = 32 
     lr = 1e-4
     
@@ -166,7 +169,7 @@ if __name__=="__main__":
     seed_everything(SEED)
     torch.cuda.is_available()
     
-    checkpoint_path = './check_point/'
+    checkpoint_path = './check_point_{}x{}/'.format(frame_size[0],frame_size[1])
     
     image_dir = './data/images_{}x{}/'.format(frame_size[0],frame_size[1])
     image_train_dir = './data/images_train_{}x{}/'.format(frame_size[0],frame_size[1])
@@ -176,39 +179,38 @@ if __name__=="__main__":
     focus_csv = 'focus.csv'
     
     transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.ToTensor()
     ])
     
     ### data augmentation
     transform_t = transforms.Compose([
         transforms.ToPILImage(),
         transforms.RandomRotation(30),
-        transforms.RandomHorizontalFlip(),
+        transforms.RandomHorizontalFlip(p=1),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     
 
     ## both trian and test data are from all 25 videos
-    train_loader, test_loader = create_datasets(batch_size,transform, transform_t, image_dir, rest_csv, focus_csv)
+    train_loader, test_loader, _ = create_datasets(batch_size,transform, transform_t, image_dir, rest_csv, focus_csv)
     
     # ### trian data is from first 21 videos and test data is from last 4 videos.
     # train_loader, test_loader = create_datasets2(batch_size,transform, transform_t, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
-    #########################################################################
+    ##########################################################################
     ## using CNN with inputs size 28x28
     ##########################################################################
     model=CNN_Net().cuda()
     model.apply(initialize_weights)
     
-    ###########################################################################
-    # ### using pretrained vgg11 with inputs size 224x224
+    # ###########################################################################
+    # ### or using pretrained vgg11 with inputs size 224x224
     # ###########################################################################
     # model = alexnet()
     
     ### train model
-    train_model(model, train_loader, num_epochs, checkpoint_path)
+    # train_model(model, train_loader, num_epochs, checkpoint_path)
     
-    predict(model, test_loader, checkpoint_path, num_epochs)
+    predict(model, test_loader, checkpoint_path, 90)
     
