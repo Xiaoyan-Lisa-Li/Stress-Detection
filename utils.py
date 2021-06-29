@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import random
 import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix
 
 def plot_loss(model, losses, label):
     plt.figure(figsize=(10,5))
@@ -51,3 +53,16 @@ def initialize_weights(model):
       if model.bias is not None:
         nn.init.constant_(model.bias.data, 0)
 
+def plot_confusion_matirx(y_true, y_pred, labels):
+    
+    cm = confusion_matrix(y_true, y_pred, labels=labels, normalize='true')
+    
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['rest','focus'])
+
+    
+    # NOTE: Fill all variables here with default values of the plot_confusion_matrix
+    disp = disp.plot(include_values=True,
+                     cmap=plt.cm.Blues, ax=None, xticks_rotation='horizontal')
+    
+    plt.show()
+    

@@ -36,25 +36,36 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
     rest_false = 0
     focus_true = 0
     focus_false = 0
-    
+    y_pred = []
+    y_true = []
+
     for i, sample_batch in enumerate(test_loader):
-        x_test, y_test = sample_batch
-        total_num += len(y_test)
-        preds = model(x_test.cuda())
+        x_test, y = sample_batch
+        total_num += len(y)
+        pred = model(x_test.cuda())
   
         ### if preds > 0.5, preds = 1, otherwise, preds = 0
         # print(preds)
-        preds = torch.tensor([p.item() > 0.5 for p in preds.cpu().detach().numpy()])
+        pred = [p.item() > 0.5 for p in pred.cpu().detach().numpy()]
 
-        test_acc += sum(torch.eq(y_test, preds))
+        pred = list(map(int, pred))
+
+        y_pred.extend(pred)
+        
+        y = y.detach().numpy()
+        
+        y_true.extend(y.tolist())
+        
+        test_acc += sum(y == np.array(pred))
+        
        
         ## calculate how many samples are predicted correctly.
-        for y, p in zip(y_test, preds):
-            if y == p and y.item() == 0:
+        for t, p in zip(y, pred):
+            if t == p and t.item() == 0:
                 rest_true += 1
-            elif y != p and y.item() == 0:
+            elif t != p and t.item() == 0:
                 rest_false += 1
-            elif y == p and y.item() == 1:
+            elif t == p and t.item() == 1:
                 focus_true += 1
             else:
                 focus_false += 1
@@ -77,6 +88,10 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
         f.writelines("the number of focus samples that are correctly classified is {} \n".format(focus_true))
         f.writelines("the number of focus samples that are incorrectly classified is {} \n".format(focus_false))
         f.writelines("The test accracy of {} is {} \n".format(method, acc))
+    
+    print(y_true)
+    print(y_pred)
+    plot_confusion_matirx(y_true, y_pred, labels = [0,1])
 
 def train_model(model, train_loader, num_epochs, checkpoint_path):
     if not os.path.exists(checkpoint_path):
@@ -159,7 +174,7 @@ if __name__=="__main__":
                         help='')
     parser.add_argument('--num_epochs', type=int, default=200,
                         help='')
-    parser.add_argument('--method', type=str, default='svm',
+    parser.add_argument('--method', type=str, default='pretrained vgg',
                         help='')    
     parser.add_argument('--seed', type=int, default=2021,
                         help='')    
