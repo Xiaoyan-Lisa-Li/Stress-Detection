@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import argparse
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,52 +16,15 @@ from models import *
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 import torchvision.models as models
+from SVM import svm_f
+from utils import *
+from datetime import datetime
 
-### 
-def plot_loss(losses, label):
-    plt.figure(figsize=(10,5))
-    plt.title("Training {}".format(label))
-    plt.plot(losses,label=label)
-    plt.xlabel("iterations")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.show()
+   
+def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
     
-def seed_everything(seed):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed) 
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
-
-def save_objs(model, epoch, loss, optimizer, save_path):
-    path = save_path + 'model.{}'.format(epoch)   
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        "loss": loss,
-    }, path)
+    results_f = results_path + '{}_restults.txt'.format(method)
     
-def initialize_weights(model):
-  if isinstance(model, nn.Conv2d):
-      if model.weight is not None:
-        nn.init.kaiming_uniform_(model.weight.data,nonlinearity='relu')
-      if model.bias is not None:
-          nn.init.constant_(model.bias.data, 0)
-  elif isinstance(model, nn.BatchNorm2d):
-      if model.weight is not None:
-        nn.init.constant_(model.weight.data, 1)
-      if model.bias is not None:  
-        nn.init.constant_(model.bias.data, 0)
-  elif isinstance(model, nn.Linear):
-      if model.weight is not None:
-        nn.init.kaiming_uniform_(model.weight.data)
-      if model.bias is not None:
-        nn.init.constant_(model.bias.data, 0)
-        
-def predict(model, test_loader, checkpoint_path, epoch):
     checkpoint = torch.load(checkpoint_path + 'model.{}'.format(epoch))
     model.load_state_dict(checkpoint["model_state_dict"]) 
         
@@ -77,16 +41,7 @@ def predict(model, test_loader, checkpoint_path, epoch):
         x_test, y_test = sample_batch
         total_num += len(y_test)
         preds = model(x_test.cuda())
-        
-        
-# #############################################################################
-#          ### softmax        
-#         test_acc += (preds.argmax(dim=1) == target).sum().float()
-        
-
-
-###############################################################################
-### sigmoid        
+  
         ### if preds > 0.5, preds = 1, otherwise, preds = 0
         # print(preds)
         preds = torch.tensor([p.item() > 0.5 for p in preds.cpu().detach().numpy()])
@@ -103,15 +58,25 @@ def predict(model, test_loader, checkpoint_path, epoch):
                 focus_true += 1
             else:
                 focus_false += 1
+                
     print("rest_true is ",rest_true)   
     print("rest_false is ",rest_false)
     print("focus_true is ",focus_true)
     print("focus_false is ",focus_false)
     print("total number of samples is: ",total_num)
-
-        
-    print("test accuracy is {}".format(test_acc.item()/total_num))
-    return test_acc/total_num
+    acc = test_acc.item()/total_num
+    print("test accuracy is {}".format(acc))
+    
+    now = datetime.now() 
+    date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+    
+    with open(results_f, "a") as f:
+        f.write('*'*40 + date_time + '*'*40 +'\n')
+        f.writelines("the number of rest samples that are correctly classified is {} \n".format(rest_true))
+        f.writelines("the number of rest samples that are incorrectly classified is {} \n".format(rest_false))
+        f.writelines("the number of focus samples that are correctly classified is {} \n".format(focus_true))
+        f.writelines("the number of focus samples that are incorrectly classified is {} \n".format(focus_false))
+        f.writelines("The test accracy of {} is {} \n".format(method, acc))
 
 def train_model(model, train_loader, num_epochs, checkpoint_path):
     if not os.path.exists(checkpoint_path):
@@ -154,26 +119,17 @@ def train_model(model, train_loader, num_epochs, checkpoint_path):
         save_objs(model, epoch+1, avg_loss, optimizer, checkpoint_path)
 
     
-    plot_loss(train_losses, label='train')
+    plot_loss(args.method, train_losses, label='train')
+    
+    
 
+def main(args, model):
     
-if __name__=="__main__":
+    checkpoint_path = './check_point_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
     
-    frame_size = (224,224)
-    # frame_size = (28,28)
-    num_epochs = 200
-    batch_size = 32 
-    lr = 1e-4
-    
-    SEED = 2019
-    seed_everything(SEED)
-    torch.cuda.is_available()
-    
-    checkpoint_path = './check_point_{}x{}/'.format(frame_size[0],frame_size[1])
-    
-    image_dir = './data/images_{}x{}/'.format(frame_size[0],frame_size[1])
-    image_train_dir = './data/images_train_{}x{}/'.format(frame_size[0],frame_size[1])
-    image_test_dir = './data/images_test_{}x{}/'.format(frame_size[0],frame_size[1])
+    image_dir = './data/images_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
+    image_train_dir = './data/images_train_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
+    image_test_dir = './data/images_test_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
     
     rest_csv = 'rest.csv'
     focus_csv = 'focus.csv'
@@ -181,36 +137,57 @@ if __name__=="__main__":
     transform = transforms.Compose([
         transforms.ToTensor()
     ])
-    
-    ### data augmentation
-    transform_t = transforms.Compose([
-        transforms.ToPILImage(),
-        transforms.RandomRotation(30),
-        transforms.RandomHorizontalFlip(p=1),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    
 
+    
     ## both trian and test data are from all 25 videos
-    train_loader, test_loader, _ = create_datasets(batch_size,transform, transform_t, image_dir, rest_csv, focus_csv)
+    train_loader, test_loader, _ = create_datasets(args.batch_size,transform, image_dir, rest_csv, focus_csv)
     
     # ### trian data is from first 21 videos and test data is from last 4 videos.
-    # train_loader, test_loader = create_datasets2(batch_size,transform, transform_t, image_train_dir, image_test_dir, rest_csv, focus_csv)
-    
-    ##########################################################################
-    ## using CNN with inputs size 28x28
-    ##########################################################################
-    model=CNN_Net().cuda()
-    model.apply(initialize_weights)
-    
-    # ###########################################################################
-    # ### or using pretrained vgg11 with inputs size 224x224
-    # ###########################################################################
-    # model = alexnet()
+    # train_loader, test_loader = create_datasets2(args.batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
     ### train model
-    # train_model(model, train_loader, num_epochs, checkpoint_path)
+    train_model(model, train_loader, args.num_epochs, checkpoint_path)
     
-    predict(model, test_loader, checkpoint_path, 90)
+    predict(model, test_loader, checkpoint_path, args.num_epochs, args.method, args.results)
+    
+if __name__=="__main__":
+    
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--batch_size', type=int, default=32,
+                        help='')
+    parser.add_argument('--frame_size', type=tuple, default=(28,28),
+                        help='')
+    parser.add_argument('--num_epochs', type=int, default=200,
+                        help='')
+    parser.add_argument('--method', type=str, default='svm',
+                        help='')    
+    parser.add_argument('--seed', type=int, default=2021,
+                        help='')    
+    parser.add_argument('--results', type=str, default='./method1_results/',
+                        help='')  
+    
+    args = parser.parse_args()
+    
+    seed_everything(args.seed)
+    
+    torch.cuda.is_available()
+    
+    if not os.path.exists(args.results):
+        os.makedirs(args.results)
+    
+    
+    if args.method == "2d cnn":
+        args.frame_size = (28,28)
+        model=CNN_Net().cuda()
+        model.apply(initialize_weights)  
+        main(args, model)
+    if args.method == "pretrained vgg":
+        args.frame_size = (224,224)
+        model = alexnet()
+        main(args, model)
+    if args.method == "svm":
+        args.frame_size = (28,28)
+        svm_f(args.batch_size, args.frame_size,args.results, args.method)
+
+
     

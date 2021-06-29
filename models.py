@@ -52,6 +52,6 @@ class alexnet(nn.Module):
         x = F.sigmoid(x)
         return x
         
-alex_net = alexnet()
+# alex_net = alexnet()
     
-print(alex_net)
+# print(alex_net)
