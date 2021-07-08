@@ -77,6 +77,9 @@ def create_datasets(batch_size, transform, image_dir, rest_csv, focus_csv):
    
     train_set, test_set = torch.utils.data.random_split(img_dataset, [round(len(img_dataset)*0.8),round(len(img_dataset)*0.2)]) 
     
+    # print("train_set is ", train_set[0])
+    # print("test_set is:", test_set[0])
+    
     train_loader = DataLoader(dataset=train_set, batch_size = batch_size, shuffle=True)
     test_loader = DataLoader(dataset=test_set, batch_size = batch_size, shuffle=True)
 

@@ -8,15 +8,180 @@ import random
 import matplotlib.pyplot as plt
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import confusion_matrix
+from scipy import signal
+import matplotlib.pyplot as plt
+from scipy import fftpack
 
-def plot_loss(model, losses, label):
+MIN_HZ = 0.5       # 30 BPM - minimum allowed heart rate
+MAX_HZ = 2.        # 120 BPM - maximum allowed heart rate
+
+DEBUG_MODE = False
+buffer_size = 500
+
+# def plot_bmp(ecg, reconstructed_hr, path, video_nums, channel):
+#     plt.figure
+#     plt.plot(ecg, alpha=0.75, label='ECG')
+#     plt.plot(reconstructed_hr, alpha=0.75, label='reconstructed heart rate')
+#     plt.savefig(path +'StressTetris-1-{}_bmp_channel_{}.jpg'.format(video_nums, channel))
+#     plt.show()
+
+def plot_bmp(reconstructed_hr, path, video_nums, channel):
+    plt.figure
+    plt.plot(reconstructed_hr, alpha=0.75, label='reconstructed heart rate')
+    plt.savefig(path +'StressTetris-1-{}_bmp_channel_{}.jpg'.format(video_nums, channel))
+    plt.show()         
+    
+
+def plot_extracted_hr(signal_val, fps, path, video_nums, channel):
+
+    # n = len(signal_val)  # length of the signal
+    # k = np.arange(n)
+    # T = n / fps
+    # frq = k / T  # two sides frequency range
+    # frq = frq[range(n // 2)]  # one side frequency range
+    # Y = fftpack.fft(yy) / n  # fft computing and normalization
+    # Y = Y[range(n // 2)] / max(Y[range(n // 2)])
+    
+    # plotting the data
+    plt.subplot(2, 1, 1)
+    plt.plot(signal_val, 'r')
+
+    plt.xlabel('Time (micro seconds)')
+    plt.ylabel('Amplitude')
+    plt.grid()
+    
+    # # plotting the spectrum
+    # plt.subplot(3, 1, 2)
+    # plt.plot(frq[0:600], abs(Y[0:600]), 'k')
+    # plt.xlabel('Freq (Hz)')
+    # plt.ylabel('|Y(freq)|')
+    # plt.grid()
+    
+    # plotting the specgram
+    plt.subplot(2, 1, 2)
+    Pxx, freqs, bins, im = plt.specgram(signal_val, NFFT=128, Fs=fps, noverlap=0)
+    print("length of freqs", len(freqs))
+    plt.xlabel('Time (micro seconds)')
+    plt.ylabel('Frequency')
+    plt.savefig(path +'StressTetris-1-{}_heart_rate_channel_{}.jpg'.format(video_nums, channel))
+    plt.show()    
+
+def plot_rgb_signals(forehead, left_cheek, right_cheek, path, video_nums):
+    plt.figure
+    plt.plot(forehead[:,0], '-r', alpha=0.75, label='forehead(red)')
+    plt.plot(forehead[:,1], '-g', alpha=0.75, label='forehead(green)')
+    plt.plot(forehead[:,2], '-b', alpha=0.75, label='forehead(blue)')
+
+    plt.plot(left_cheek[:,0], '--r', alpha=0.75, label='left_cheek(red)')
+    plt.plot(left_cheek[:,1], '--g', alpha=0.75, label='left_cheek(green)')
+    plt.plot(left_cheek[:,2], '--b', alpha=0.75, label='left_cheek(blue)')
+
+    plt.plot(right_cheek[:,0], ':r', alpha=0.75, label='right_cheek(red)')
+    plt.plot(right_cheek[:,1], ':g', alpha=0.75, label='right_cheek(green)')
+    plt.plot(right_cheek[:,2], ':b', alpha=0.75, label='right_cheek(blue)')
+    
+    plt.title('RGB values')
+
+    plt.legend(fontsize='x-small', loc = 4)
+    plt.grid(True)
+    plt.savefig(path +'StressTetris-1-'+ video_nums+'_rgb.jpg')
+    plt.show()
+    
+
+def compute_bpm(filtered_val, fps, time_s):
+    last_bpm = 0
+    bpm_ls = []
+    for i in range(int(fps*time_s)):
+        # Compute FFT
+        if (500+i) < int(fps*time_s):
+            fft = np.abs(np.fft.rfft(filtered_val[i:500+i]))
+            # Generate list of frequencies that correspond to the FFT values
+            freqs = fps / buffer_size * np.arange(buffer_size / 2 + 1) 
+            # print("freqs = ",freqs)
+        
+            # Filter out any peaks in the FFT that are not within our range of [MIN_HZ, MAX_HZ]
+            # because they correspond to impossible BPM values.
+            while True:
+                max_idx = fft.argmax()
+                bps = freqs[max_idx]
+                # print("bps is",bps)
+                if bps < MIN_HZ or bps > MAX_HZ:
+                    if DEBUG_MODE:
+                        print ('BPM of {0} was discarded.'.format(bps * 60.0))
+                    fft[max_idx] = 0
+                else:
+                    bpm = bps * 60.0
+                    break 
+            # It's impossible for the heart rate to change more than 10% between samples,
+            # so use a weighted average to smooth the BPM with the last BPM.
+            if last_bpm > 0:
+                bpm = (last_bpm * 0.9) + (bpm * 0.1) 
+            last_bpm = bpm
+            bpm_ls.append(bpm)
+        else:
+            break
+    return np.array(bpm_ls)  
+
+def get_forehead_roi(face_points):
+    # Store the points in a Numpy array so we can easily get the min and max for x and y via slicing
+    points = np.zeros((len(face_points.parts()), 2))
+    for i, part in enumerate(face_points.parts()):
+        points[i] = (part.x, part.y)
+
+    min_x = int(points[21, 0])
+    min_y = int(min(points[21, 1], points[22, 1]))
+    max_x = int(points[22, 0])
+    max_y = int(max(points[21, 1], points[22, 1]))
+    left = min_x
+    right = max_x
+    top = min_y - (max_x - min_x)
+    bottom = max_y * 0.98
+    return int(left), int(right), int(top), int(bottom) 
+
+# Creates the specified Butterworth filter and applies it.
+def butterworth_filter(data, low, high, sample_rate, order=5):
+
+    nyquist_rate = sample_rate * 0.5
+    # print("nyquist_rate",nyquist_rate)
+    low /= nyquist_rate
+    high /= nyquist_rate
+
+    b, a = signal.butter(order, [low, high], btype='band')
+    return signal.lfilter(b, a, data)
+
+def sliding_window_demean(signal_values, num_windows):
+    window_size = int(round(len(signal_values) / num_windows))
+    demeaned = np.zeros(signal_values.shape)
+    for i in range(0, len(signal_values), window_size):
+        if i + window_size > len(signal_values):
+            window_size = len(signal_values) - i
+        curr_slice = signal_values[i: i + window_size]
+        if DEBUG_MODE and curr_slice.size == 0:
+            print ('Empty Slice: size={0}, i={1}, window_size={2}'.format(signal_values.size, i, window_size))
+            print (curr_slice)
+        demeaned[i:i + window_size] = curr_slice - np.mean(curr_slice)
+    return demeaned
+
+def filter_signal_data(values, fps):
+    # Ensure that array doesn't have infinite or NaN values
+    values = np.array(values)
+    np.nan_to_num(values, copy=False)
+
+    # Smooth the signal by detrending and demeaning
+    detrended = signal.detrend(values, type='linear')
+    demeaned = sliding_window_demean(detrended, 15)
+    # Filter signal with Butterworth bandpass filter
+    filtered = butterworth_filter(demeaned, MIN_HZ, MAX_HZ, fps, order=5)
+    return filtered  
+
+def plot_loss(model, losses, results_path, label):
     plt.figure(figsize=(10,5))
     plt.title("Training {}".format(label))
     plt.plot(losses,label=label)
     plt.xlabel("iterations")
     plt.ylabel("Loss")
     plt.legend()
-    plt.savefig("{}-train-losses.png".format(model))
+    plt.savefig(results_path+"{}-train-losses.png".format(model))
     plt.show()
     
 def seed_everything(seed):
@@ -28,13 +193,13 @@ def seed_everything(seed):
     torch.backends.cudnn.deterministic = True
 
 def save_objs(model, epoch, loss, optimizer, save_path):
-    path = save_path + 'model.{}'.format(epoch)   
+     
     torch.save({
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
         "loss": loss,
-    }, path)
+    }, save_path)
     
 def initialize_weights(model):
   if isinstance(model, nn.Conv2d):
@@ -52,8 +217,25 @@ def initialize_weights(model):
         nn.init.kaiming_uniform_(model.weight.data)
       if model.bias is not None:
         nn.init.constant_(model.bias.data, 0)
+        
+def reset_weights(m):
+  '''
+    Try resetting model weights to avoid
+    weight leakage.
+  '''
+  for layer in m.children():
+   if hasattr(layer, 'reset_parameters'):
+    print(f'Reset trainable parameters of layer = {layer}')
+    layer.reset_parameters()
+    
+def reset_weights_vgg(alex_net):    
+    for layer in alex_net.children():
+        if type(layer) == nn.Linear:
+            layer.reset_parameters()
+            print(f'Reset trainable parameters of layer = {layer}')
 
-def plot_confusion_matirx(y_true, y_pred, labels):
+def plot_confusion_matirx(y_true, y_pred, method, fig_path, fold, n, labels):
+    np.set_printoptions(precision=4)
     
     cm = confusion_matrix(y_true, y_pred, labels=labels, normalize='true')
     
@@ -64,5 +246,6 @@ def plot_confusion_matirx(y_true, y_pred, labels):
     disp = disp.plot(include_values=True,
                      cmap=plt.cm.Blues, ax=None, xticks_rotation='horizontal')
     
+
+    plt.savefig(fig_path + "Repeat{}_Fold{}_{}_confusion_matrix.png".format(n, fold, method))
     plt.show()
-    

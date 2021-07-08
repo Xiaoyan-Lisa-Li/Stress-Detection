@@ -19,13 +19,14 @@ import torchvision.models as models
 from SVM import svm_f
 from utils import *
 from datetime import datetime
+from sklearn.model_selection import KFold
 
    
-def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
+def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fold, n):
     
     results_f = results_path + '{}_restults.txt'.format(method)
     
-    checkpoint = torch.load(checkpoint_path + 'model.{}'.format(epoch))
+    checkpoint = torch.load(checkpoint_path + 'model{}_repeat{}_fold{}.pth'.format(epoch, n ,fold))
     model.load_state_dict(checkpoint["model_state_dict"]) 
         
     model.cuda()
@@ -45,7 +46,7 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
         pred = model(x_test.cuda())
   
         ### if preds > 0.5, preds = 1, otherwise, preds = 0
-        # print(preds)
+        print(y)
         pred = [p.item() > 0.5 for p in pred.cpu().detach().numpy()]
 
         pred = list(map(int, pred))
@@ -69,7 +70,7 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
                 focus_true += 1
             else:
                 focus_false += 1
-                
+    print("This is the {}th repeat {}th fold".format(n, fold))            
     print("rest_true is ",rest_true)   
     print("rest_false is ",rest_false)
     print("focus_true is ",focus_true)
@@ -83,17 +84,30 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
     
     with open(results_f, "a") as f:
         f.write('*'*40 + date_time + '*'*40 +'\n')
+        f.writelines("repeat {}, fold {} \n".format(n, fold))
         f.writelines("the number of rest samples that are correctly classified is {} \n".format(rest_true))
         f.writelines("the number of rest samples that are incorrectly classified is {} \n".format(rest_false))
         f.writelines("the number of focus samples that are correctly classified is {} \n".format(focus_true))
         f.writelines("the number of focus samples that are incorrectly classified is {} \n".format(focus_false))
         f.writelines("The test accracy of {} is {} \n".format(method, acc))
     
-    print(y_true)
-    print(y_pred)
-    plot_confusion_matirx(y_true, y_pred, labels = [0,1])
+    # print(y_true)
+    # print(y_pred)
+        if method == '2d cnn':
+            fig_path = results_path + "/2d_cnn_figures/"
+            if not os.path.exists(fig_path):
+                os.makedirs(fig_path)
+        elif method == 'pretrained vgg':
+            fig_path = results_path + "/pretain_vgg_figures/"
+            if not os.path.exists(fig_path):
+                os.makedirs(fig_path)
+    plot_confusion_matirx(y_true, y_pred, method, fig_path, fold, n, labels = [0,1])
+    
+    return acc
 
-def train_model(model, train_loader, num_epochs, checkpoint_path):
+def train_model(model, train_loader, num_epochs, checkpoint, results_path,fold, n):
+    
+    checkpoint_path = results_path + checkpoint
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
         
@@ -128,19 +142,22 @@ def train_model(model, train_loader, num_epochs, checkpoint_path):
         avg_loss = losses / len(train_loader)            
         train_losses.append(loss.item()) 
         
-        print('Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(
-            epoch+1, num_epochs, i+1, len(train_loader), loss.item()))
-       
-        save_objs(model, epoch+1, avg_loss, optimizer, checkpoint_path)
+        print('Repeat {} Fold {} Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(n, fold,
+            epoch, num_epochs, i, len(train_loader), loss.item()))
+        
+        
+        if (epoch+1) %10 == 0:
+            save_path = checkpoint_path + 'model{}_repeat{}_fold{}.pth'.format(epoch,n,fold)  
+            save_objs(model, epoch, avg_loss, optimizer, save_path)
 
     
-    plot_loss(args.method, train_losses, label='train')
+    plot_loss(args.method, train_losses, results_path, label='train')
     
     
 
-def main(args, model):
+def main(args):
     
-    checkpoint_path = './check_point_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
+    checkpoint = 'check_point_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
     
     image_dir = './data/images_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
     image_train_dir = './data/images_train_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
@@ -149,22 +166,65 @@ def main(args, model):
     rest_csv = 'rest.csv'
     focus_csv = 'focus.csv'
     
+    k_folds = 5
+    repeat = 3
+    
+      # Define the K-fold Cross Validator
+    kfold = KFold(n_splits=k_folds, shuffle=True)
+    
     transform = transforms.Compose([
         transforms.ToTensor()
     ])
 
-    
+   
     ## both trian and test data are from all 25 videos
-    train_loader, test_loader, _ = create_datasets(args.batch_size,transform, image_dir, rest_csv, focus_csv)
+    train_loader, test_loader, dataset = create_datasets(args.batch_size,transform, image_dir, rest_csv, focus_csv)
     
     # ### trian data is from first 21 videos and test data is from last 4 videos.
     # train_loader, test_loader = create_datasets2(args.batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
-    ### train model
-    train_model(model, train_loader, args.num_epochs, checkpoint_path)
+    test_acc = []
+    for n in range(repeat):
+        for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):
+            
+            # Print
+            print(f'FOLD {fold}')
+            print('--------------------------------')  
+            train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
+            test_subsampler = torch.utils.data.SubsetRandomSampler(test_ids)
+            
+            # Define data loaders for training and testing data in this fold
+            train_loader = torch.utils.data.DataLoader(
+                              dataset, batch_size=args.batch_size, sampler=train_subsampler)
+            test_loader = torch.utils.data.DataLoader(
+                              dataset, batch_size=args.batch_size, sampler=test_subsampler)
+            if args.method == '2d cnn':
+                model=CNN_Net().cuda()
+                model.apply(reset_weights)
+                # model.apply(initialize_weights)
+            elif args.method == 'pretrained vgg':
+                model = alexnet()
+                model.apply(reset_weights_vgg)
+                
+            checkpoint_path = args.results + checkpoint
+            
+            ## train model
+            train_model(model, train_loader, args.num_epochs, checkpoint, args.results, fold, n)
+
+            acc = predict(model, test_loader, checkpoint_path, args.num_epochs-1, args.method, args.results, fold, n)
+            test_acc.append(acc)
+            
+    mean = np.array(test_acc).mean()
+    std = np.array(test_acc).std()
+    print("Method %s: %0.2f accuracy with a standard deviation of %0.2f" % (args.method, mean, std))
     
-    predict(model, test_loader, checkpoint_path, args.num_epochs, args.method, args.results)
-    
+    now = datetime.now() 
+    date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+    results_f = args.results + '{}_restults.txt'.format(args.method)
+    with open(results_f, "a") as f:
+        f.write('*'*40 + date_time + '*'*40 +'\n')
+        f.write("Method %s: %0.2f accuracy with a standard deviation of %0.2f \n" % (args.method, mean, std))    
+
 if __name__=="__main__":
     
     parser = argparse.ArgumentParser(description='')
@@ -183,7 +243,7 @@ if __name__=="__main__":
     
     args = parser.parse_args()
     
-    seed_everything(args.seed)
+    # seed_everything(args.seed)
     
     torch.cuda.is_available()
     
@@ -193,13 +253,10 @@ if __name__=="__main__":
     
     if args.method == "2d cnn":
         args.frame_size = (28,28)
-        model=CNN_Net().cuda()
-        model.apply(initialize_weights)  
-        main(args, model)
+        main(args)
     if args.method == "pretrained vgg":
         args.frame_size = (224,224)
-        model = alexnet()
-        main(args, model)
+        main(args)
     if args.method == "svm":
         args.frame_size = (28,28)
         svm_f(args.batch_size, args.frame_size,args.results, args.method)
