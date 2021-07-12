@@ -80,7 +80,7 @@ def extract_frames_m1(path_video, path_rest,path_focus, video, frame_size):
             face_frame = cv2.resize(face_frame, frame_size)
                
         
-        if ((vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 120000) or (vidcap.get(cv2.CAP_PROP_POS_MSEC) >= 300000)) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 480000):
+        if ((vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 120000) or (vidcap.get(cv2.CAP_PROP_POS_MSEC) >= 300000)) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 540000):
             cv2.imwrite(path_rest +"rest_%s_frame%d.jpg"%(video, count), face_frame)     # save rest frame as JPEG file 
             print('Read a new frame(rest): %d'%(vidcap.get(cv2.CAP_PROP_POS_MSEC)))
         elif (vidcap.get(cv2.CAP_PROP_POS_MSEC) > 120000) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) < 300000):
@@ -298,6 +298,9 @@ if __name__=="__main__":
     frame_size = (28, 28)   # frame_size = (224,224) for pretrained vgg model
     path_video = './data/videos/'
     
+    ### m1 function extracts facial images from each frame
     m1(frame_size,path_video)
+    
+    ### m2 function extracts forehead and cheeks from each facial images.
     # m2(path_video)
     # find_fps(path_video)

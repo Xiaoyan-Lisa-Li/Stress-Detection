@@ -68,10 +68,6 @@ def svm_f(batch_size, frame_size, results_p, method):
         C = 5.0
     model= svm.SVC(kernel=kernel, C=C)
     
-
-    if not os.path.exists(results_p):
-         os.mkdir(results_p)
-         
     transform = transforms.Compose([
         transforms.ToTensor()
     ])

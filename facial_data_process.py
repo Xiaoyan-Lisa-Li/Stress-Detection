@@ -112,9 +112,9 @@ def create_datasets2(batch_size, transform, image_train_dir, image_test_dir, res
     
     test_set = torch.utils.data.ConcatDataset([test_rest, test_focus])
     test_loader = DataLoader(dataset=test_set, batch_size = batch_size, shuffle=True)
-    img_dataset = torch.utils.data.ConcatDataset([train_set, test_set])
+
  
-    return train_loader, test_loader, img_dataset
+    return train_loader, test_loader
 
 
 
@@ -149,7 +149,7 @@ if __name__=="__main__":
     # creat_csv(image_train_dir + focus_csv, image_train_dir +'focus/',label_focus)       
     # creat_csv(image_test_dir + rest_csv, image_test_dir +'rest/', label_rest)
     # creat_csv(image_test_dir + focus_csv, image_test_dir +'focus/',label_focus)  
-    # train_loader, test_loader, img_dataset = create_datasets2(batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
+    # train_loader, test_loader = create_datasets2(batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
     
     data_iter = iter(train_loader)   
