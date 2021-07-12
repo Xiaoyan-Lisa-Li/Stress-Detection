@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 import time 
 import random
 from torch.optim import Adam
-from data_processing import *
+from facial_data_process import *
 from models import *
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
@@ -70,11 +70,15 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fo
                 focus_true += 1
             else:
                 focus_false += 1
+    rest_precision = rest_true/(rest_true+focus_false)
+    focus_precision = focus_true/(focus_true+rest_false)
     print("This is the {}th repeat {}th fold".format(n, fold))            
     print("rest_true is ",rest_true)   
     print("rest_false is ",rest_false)
     print("focus_true is ",focus_true)
     print("focus_false is ",focus_false)
+    print('rest precision is',rest_precision)
+    print('focus precision is',focus_precision)
     print("total number of samples is: ",total_num)
     acc = test_acc.item()/total_num
     print("test accuracy is {}".format(acc))
@@ -89,6 +93,8 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fo
         f.writelines("the number of rest samples that are incorrectly classified is {} \n".format(rest_false))
         f.writelines("the number of focus samples that are correctly classified is {} \n".format(focus_true))
         f.writelines("the number of focus samples that are incorrectly classified is {} \n".format(focus_false))
+        f.writelines("the rest precision is {} \n".format(rest_precision))
+        f.writelines("the focus precision is {} \n".format(focus_precision))
         f.writelines("The test accracy of {} is {} \n".format(method, acc))
     
     # print(y_true)
@@ -103,7 +109,7 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fo
                 os.makedirs(fig_path)
     plot_confusion_matirx(y_true, y_pred, method, fig_path, fold, n, labels = [0,1])
     
-    return acc
+    return acc, rest_precision, focus_precision
 
 def train_model(model, train_loader, num_epochs, checkpoint, results_path,fold, n):
     
@@ -184,6 +190,8 @@ def main(args):
     # train_loader, test_loader = create_datasets2(args.batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
     test_acc = []
+    rest_prec_ls = []
+    focus_prec_ls = []
     for n in range(repeat):
         for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):
             
@@ -199,7 +207,7 @@ def main(args):
             test_loader = torch.utils.data.DataLoader(
                               dataset, batch_size=args.batch_size, sampler=test_subsampler)
             if args.method == '2d cnn':
-                model=CNN_Net().cuda()
+                model=CNN_2d().cuda()
                 model.apply(reset_weights)
                 # model.apply(initialize_weights)
             elif args.method == 'pretrained vgg':
@@ -211,20 +219,33 @@ def main(args):
             ## train model
             train_model(model, train_loader, args.num_epochs, checkpoint, args.results, fold, n)
 
-            acc = predict(model, test_loader, checkpoint_path, args.num_epochs-1, args.method, args.results, fold, n)
+            acc, rest_precision, focus_precision  = predict(model, test_loader, checkpoint_path, args.num_epochs-1, args.method, args.results, fold, n)
             test_acc.append(acc)
+            focus_prec_ls.append(focus_precision)
+            rest_prec_ls.append(rest_precision)
             
-    mean = np.array(test_acc).mean()
-    std = np.array(test_acc).std()
-    print("Method %s: %0.2f accuracy with a standard deviation of %0.2f" % (args.method, mean, std))
+    acc_mean = np.array(test_acc).mean()
+    acc_std = np.array(test_acc).std()
+
+    rest_mean = np.array(rest_prec_ls).mean()
+    rest_std = np.array(rest_prec_ls).std()
+    
+    focus_mean = np.array(focus_prec_ls).mean()
+    focus_std = np.array(focus_prec_ls).std()
+    
+    print("Method %s: %0.4f accuracy with a standard deviation of %0.4f" % (args.method, acc_mean, acc_std))
+    print("Method %s: %0.4f rest precision with a standard deviation of %0.4f" % (args.method, rest_mean, rest_std))
+    print("Method %s: %0.4f focus with a standard deviation of %0.4f" % (args.method, focus_mean, focus_std))
     
     now = datetime.now() 
     date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
     results_f = args.results + '{}_restults.txt'.format(args.method)
     with open(results_f, "a") as f:
         f.write('*'*40 + date_time + '*'*40 +'\n')
-        f.write("Method %s: %0.2f accuracy with a standard deviation of %0.2f \n" % (args.method, mean, std))    
-
+        f.write("Method %s: %0.2f accuracy with a standard deviation of %0.2f \n" % (args.method, acc_mean, acc_std))    
+        f.write("Method %s: %0.4f rest precision with a standard deviation of %0.4f \n" % (args.method, rest_mean, rest_std))
+        f.write("Method %s: %0.4f focus with a standard deviation of %0.4f \n" % (args.method, focus_mean, focus_std))
+        
 if __name__=="__main__":
     
     parser = argparse.ArgumentParser(description='')
@@ -232,13 +253,13 @@ if __name__=="__main__":
                         help='')
     parser.add_argument('--frame_size', type=tuple, default=(28,28),
                         help='')
-    parser.add_argument('--num_epochs', type=int, default=200,
+    parser.add_argument('--num_epochs', type=int, default=300,
                         help='')
     parser.add_argument('--method', type=str, default='pretrained vgg',
                         help='')    
     parser.add_argument('--seed', type=int, default=2021,
                         help='')    
-    parser.add_argument('--results', type=str, default='./method1_results/',
+    parser.add_argument('--results', type=str, default='./facial_image_results/',
                         help='')  
     
     args = parser.parse_args()

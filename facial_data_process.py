@@ -125,8 +125,8 @@ if __name__=="__main__":
     label_focus = 1
     
     image_dir = './data/images_{}x{}/'.format(frame_size[0],frame_size[1])
-    image_train_dir = './data/images_train_{}x{}/'.format(frame_size[0],frame_size[1])
-    image_test_dir = './data/images_test_{}x{}/'.format(frame_size[0],frame_size[1])
+    image_train_dir = './data/data2/images_train_{}x{}/'.format(frame_size[0],frame_size[1])
+    image_test_dir = './data/data2/images_test_{}x{}/'.format(frame_size[0],frame_size[1])
     
     rest_csv = 'rest.csv'
     focus_csv = 'focus.csv'
@@ -144,12 +144,12 @@ if __name__=="__main__":
     train_loader, test_loader, img_dataset = create_datasets(batch_size,transform, image_dir, rest_csv, focus_csv)
     
     
-    ### or trian data is from first 21 videos and test data is from last 4 videos.
+    # # or trian data is from first 24 videos and test data is from last 1 videos.
     # creat_csv(image_train_dir + rest_csv, image_train_dir +'rest/', label_rest)
     # creat_csv(image_train_dir + focus_csv, image_train_dir +'focus/',label_focus)       
     # creat_csv(image_test_dir + rest_csv, image_test_dir +'rest/', label_rest)
     # creat_csv(image_test_dir + focus_csv, image_test_dir +'focus/',label_focus)  
-    # train_loader, test_loader = create_datasets2(batch_size,transform, transform_t, image_train_dir, image_test_dir, rest_csv, focus_csv)
+    # train_loader, test_loader = create_datasets2(batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
     
     data_iter = iter(train_loader)   

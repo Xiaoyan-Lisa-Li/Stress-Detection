@@ -3,15 +3,15 @@
 
 
 import torch
-import data_processing
+import facial_data_process
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 
-class CNN_Net(nn.Module):
+class CNN_2d(nn.Module):
     def __init__(self):
-        super(CNN_Net, self).__init__()
+        super(CNN_2d, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=32,
                                 kernel_size=3,
                                 stride=1)
@@ -31,10 +31,42 @@ class CNN_Net(nn.Module):
         x = F.relu(self.dense1(x))
         x = F.sigmoid(self.dense2(x))
         return x
-
-
 # net = CNN_Net()
 # print(net)
+
+class CNN_1d(nn.Module):
+    def __init__(self):
+        super(CNN_1d, self).__init__()
+        self.conv1 = nn.Conv1d(in_channels=1, out_channels=64,
+                                kernel_size=3,
+                                stride=1)
+        self.conv1_bn = nn.BatchNorm1d(64)
+        self.maxpool1 = nn.MaxPool1d(3)
+        self.conv1_drop = nn.Dropout(0.1)
+        self.conv2 = nn.Conv1d(64, 32, kernel_size=3)
+        self.conv2_bn = nn.BatchNorm1d(32)
+        self.maxpool2 = nn.MaxPool1d(3)
+        self.conv2_drop = nn.Dropout(0.1)      
+        self.conv3 = nn.Conv1d(32, 32, kernel_size=3)
+        self.conv3_bn = nn.BatchNorm1d(32)
+        self.maxpool3 = nn.MaxPool1d(3)
+        self.conv3_drop = nn.Dropout(0.1)        
+        self.dense1 = nn.Linear(in_features=320, out_features=32)
+        self.dense2 = nn.Linear(32, 1)
+
+    def forward(self, input):
+        # print("input.shape",input.size())
+        input = input.unsqueeze(1)
+        x = self.conv1_drop(self.maxpool1(self.conv1_bn(F.relu(self.conv1(input)))))       
+        x = self.conv2_drop(self.maxpool2(self.conv2_bn(F.relu(self.conv2(x)))))
+        x = self.conv3_drop(self.maxpool3(self.conv3_bn(F.relu(self.conv3(x)))))
+        x = x.view(-1, 320) #reshape
+        x = F.relu(self.dense1(x))
+        x = F.sigmoid(self.dense2(x))
+        return x
+
+net = CNN_1d()
+print(net)
 
         
 class alexnet(nn.Module):
@@ -52,7 +84,7 @@ class alexnet(nn.Module):
         x = F.sigmoid(x)
         return x
         
-alex_net = alexnet()
-print(alex_net)
+# alex_net = alexnet()
+# print(alex_net)
     
-print(type(alex_net))
+

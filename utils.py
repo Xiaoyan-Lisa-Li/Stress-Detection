@@ -25,7 +25,7 @@ buffer_size = 500
 #     plt.savefig(path +'StressTetris-1-{}_bmp_channel_{}.jpg'.format(video_nums, channel))
 #     plt.show()
 
-def plot_bmp(reconstructed_hr, path, video_nums, channel):
+def plot_bpm(reconstructed_hr, path, video_nums, channel):
     plt.figure
     plt.plot(reconstructed_hr, alpha=0.75, label='reconstructed heart rate')
     plt.savefig(path +'StressTetris-1-{}_bmp_channel_{}.jpg'.format(video_nums, channel))
@@ -93,8 +93,9 @@ def compute_bpm(filtered_val, fps, time_s):
     bpm_ls = []
     for i in range(int(fps*time_s)):
         # Compute FFT
-        if (500+i) < int(fps*time_s):
-            fft = np.abs(np.fft.rfft(filtered_val[i:500+i]))
+        if (buffer_size+i) < int(fps*time_s):
+            fft = np.abs(np.fft.rfft(filtered_val[i:buffer_size+i]))
+          
             # Generate list of frequencies that correspond to the FFT values
             freqs = fps / buffer_size * np.arange(buffer_size / 2 + 1) 
             # print("freqs = ",freqs)
@@ -103,7 +104,10 @@ def compute_bpm(filtered_val, fps, time_s):
             # because they correspond to impossible BPM values.
             while True:
                 max_idx = fft.argmax()
+                print(len(fft))
+                print(max_idx)
                 bps = freqs[max_idx]
+
                 # print("bps is",bps)
                 if bps < MIN_HZ or bps > MAX_HZ:
                     if DEBUG_MODE:
@@ -117,6 +121,7 @@ def compute_bpm(filtered_val, fps, time_s):
             if last_bpm > 0:
                 bpm = (last_bpm * 0.9) + (bpm * 0.1) 
             last_bpm = bpm
+            print("bpm = ", bpm)
             bpm_ls.append(bpm)
         else:
             break

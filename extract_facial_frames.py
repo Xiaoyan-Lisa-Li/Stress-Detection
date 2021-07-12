@@ -10,7 +10,7 @@ from imutils import face_utils
 import numpy as np
 import time
 from random import sample
-from utils import filter_signal_data, get_forehead_roi,compute_bpm, plot_rgb_signals,plot_extracted_hr,plot_bmp
+from utils import filter_signal_data, get_forehead_roi,compute_bpm, plot_rgb_signals,plot_extracted_hr
 import matplotlib.pyplot as plt
 import scipy.io
 
@@ -80,7 +80,7 @@ def extract_frames_m1(path_video, path_rest,path_focus, video, frame_size):
             face_frame = cv2.resize(face_frame, frame_size)
                
         
-        if ((vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 120000) or (vidcap.get(cv2.CAP_PROP_POS_MSEC) >= 300000)) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 540000):
+        if ((vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 120000) or (vidcap.get(cv2.CAP_PROP_POS_MSEC) >= 300000)) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 480000):
             cv2.imwrite(path_rest +"rest_%s_frame%d.jpg"%(video, count), face_frame)     # save rest frame as JPEG file 
             print('Read a new frame(rest): %d'%(vidcap.get(cv2.CAP_PROP_POS_MSEC)))
         elif (vidcap.get(cv2.CAP_PROP_POS_MSEC) > 120000) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) < 300000):
@@ -97,11 +97,11 @@ def m1(frame_size, path_video):
     path_rest_img = './data/images_{}x{}/rest/'.format(frame_size[0],frame_size[1])
     path_focus_img = './data/images_{}x{}/focus/'.format(frame_size[0],frame_size[1])
     
-    path_train_rest = './data/images_train_{}x{}/rest/'.format(frame_size[0],frame_size[1])
-    path_train_focus = './data/images_train_{}x{}/focus/'.format(frame_size[0],frame_size[1])
+    path_train_rest = './data/data2/images_train_{}x{}/rest/'.format(frame_size[0],frame_size[1])
+    path_train_focus = './data/data2/images_train_{}x{}/focus/'.format(frame_size[0],frame_size[1])
     
-    path_test_rest = './data/images_test_{}x{}/rest/'.format(frame_size[0],frame_size[1])
-    path_test_focus = './data/images_test_{}x{}/focus/'.format(frame_size[0],frame_size[1])
+    path_test_rest = './data/data2/images_test_{}x{}/rest/'.format(frame_size[0],frame_size[1])
+    path_test_focus = './data/data2/images_test_{}x{}/focus/'.format(frame_size[0],frame_size[1])
     
 
     if not os.path.exists(path_rest_img):
@@ -128,15 +128,15 @@ def m1(frame_size, path_video):
         extract_frames_m1(path_video, path_rest_img, path_focus_img, video_nums[i], frame_size)  
         
        
-    # ### extract images from imgage_train folder
+    # # ### extract images from imgage_train folder
     # video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','010-1'\
     #               ,'011-1','013-1','015-1','017-1','018-1','019-1','021-1','022-1','023-1',\
-    #               '025-1', '026-1']
+    #               '025-1', '026-1','027-1','028-1','030-1']
     # for i in range(len(video_nums)):
     #     extract_frames_m1(path_video, path_train_rest, path_train_focus, video_nums[i], frame_size)  
         
     # # extract images from imgage_test folder
-    # video_nums = ['030-1','032-1']
+    # video_nums = ['032-1']
     # for i in range(len(video_nums)):
     #     extract_frames_m1(path_video, path_test_rest, path_test_focus, video_nums[i], frame_size)  
          
@@ -286,11 +286,7 @@ def m2(path_video):
         
         print("bpm shpae",bpm_g.shape)
 
-        
-        # ecg = []
-        
-        plot_bmp(bpm_g, path_ROIs, video_nums[i], channel='g')
-        plot_extracted_hr(bpm_g, fps, path_ROIs, video_nums[i], channel = 'g')
+
         
         
            
@@ -299,10 +295,9 @@ def m2(path_video):
 
 if __name__=="__main__":
     
-    frame_size = (28, 28)   # Final frame size to save video file
-
+    frame_size = (28, 28)   # frame_size = (224,224) for pretrained vgg model
     path_video = './data/videos/'
     
-    # m1(frame_size,path_video)
-    m2(path_video)
+    m1(frame_size,path_video)
+    # m2(path_video)
     # find_fps(path_video)
