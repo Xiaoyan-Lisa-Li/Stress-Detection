@@ -87,11 +87,14 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
                 focus_true += 1
             else:
                 focus_false += 1
-                
+    rest_precision = rest_true/(rest_true+focus_false)
+    focus_precision = focus_true/(focus_true+rest_false)        
     print("rest_true is ",rest_true)   
     print("rest_false is ",rest_false)
     print("focus_true is ",focus_true)
     print("focus_false is ",focus_false)
+    print('rest precision is',rest_precision)
+    print('focus precision is',focus_precision)
     print("total number of samples is: ",total_num)
     acc = test_acc.item()/total_num
     print("test accuracy is {}".format(acc))
@@ -105,10 +108,10 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path):
         f.writelines("the number of rest samples that are incorrectly classified is {} \n".format(rest_false))
         f.writelines("the number of focus samples that are correctly classified is {} \n".format(focus_true))
         f.writelines("the number of focus samples that are incorrectly classified is {} \n".format(focus_false))
-        f.writelines("The test accracy of {} is {} \n".format(method, acc))
-    
-    # print(y_true)
-    # print(y_pred)
+        f.writelines("the rest precision is {} \n".format(rest_precision))
+        f.writelines("the focus precision is {} \n".format(focus_precision))
+        f.writelines("The test accracy of {} is {} \n".format(method, acc))    
+
     plot_confusion_matirx(y_true, y_pred, method, results_path, labels = [0,1])
 
 def train_model(model, train_loader, num_epochs, checkpoint, results_path):
@@ -117,7 +120,6 @@ def train_model(model, train_loader, num_epochs, checkpoint, results_path):
     if not os.path.exists(checkpoint_path):
         os.makedirs(checkpoint_path)
         
-    # optimizer = Adam(params=model.parameters(), lr=lr, amsgrad=False)
      
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
     criterion = nn.BCELoss().cuda()
@@ -177,7 +179,7 @@ def main(args, model):
     ### trian data is from first 24 videos and test data is from last 1 videos.
     train_loader, test_loader = create_datasets2(args.batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
     
-    # ## train model
+    ## train model
     # train_model(model, train_loader, args.num_epochs, checkpoint, args.results)
     
     checkpoint_path = args.results + checkpoint
@@ -190,7 +192,7 @@ if __name__=="__main__":
                         help='')
     parser.add_argument('--frame_size', type=tuple, default=(28,28),
                         help='')
-    parser.add_argument('--num_epochs', type=int, default=30, ### > 30 will overfit
+    parser.add_argument('--num_epochs', type=int, default=100, ### 40 for pretrained vgg; 100 for 2D CNN
                         help='')
     parser.add_argument('--method', type=str, default='2d cnn',
                         help='')    

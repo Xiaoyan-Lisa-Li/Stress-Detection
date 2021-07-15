@@ -7,16 +7,18 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 import numpy as np
 from sklearn.metrics import plot_confusion_matrix
-from facial_data_process import *
+from facial_data_process import create_datasets
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from datetime import datetime
 from sklearn.model_selection import RepeatedKFold
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import KFold
 from numpy import std, mean
 from ecg_data_process import create_ecg_data
+from sklearn.utils import shuffle
+from sklearn.metrics import accuracy_score
 
-def polt_confusion(model, x_test, y_test, class_names,results, i):
+def polt_confusion(model, x_test, y_test, class_names,results, i, k):
     np.set_printoptions(precision=4)
     
     fig_path = results + 'svm_confusion/'
@@ -27,6 +29,7 @@ def polt_confusion(model, x_test, y_test, class_names,results, i):
     # Plot non-normalized confusion matrix
     titles_options = [("Confusion matrix, without normalization", None),
                       ("Normalized confusion matrix", 'true')]
+    
     for title, normalize in titles_options:
         disp = plot_confusion_matrix(model, x_test, y_test,
                                      display_labels=class_names,
@@ -36,28 +39,24 @@ def polt_confusion(model, x_test, y_test, class_names,results, i):
     
         print(title)
         print(disp.confusion_matrix)
-    
-    print(fig_path)
-    plt.savefig(fig_path+"SVM_cofusion_matrix_{}.png".format(i))
         
-    plt.show()
+        print(fig_path)
+   
+        print('normalize = ',normalize)
+        plt.savefig(fig_path+"SVM_cofusion_matrix_{}_{}_{}.png".format(normalize, i, k))
+            
+        plt.show()
     
-def compute_confusion(kernel, C, x, y, results_p):
-    model = svm.SVC(kernel=kernel, C=C)
-    for i in range(15):
-        x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.20,stratify=y)   
-        model.fit(x_train,y_train)
-        y_pred=model.predict(x_test)
-        print(f"The model is {accuracy_score(y_pred,y_test)*100}% accurate")
-        class_names = ['rest', 'focus']
-        polt_confusion(model, x_test, y_test, class_names,results_p,i)
+
 
 def svm_f(batch_size, frame_size, results_p, method):
-    image_dir = './data/images_{}x{}/'.format(frame_size[0], frame_size[1])   
-    rest_csv = 'rest.csv'
-    focus_csv = 'focus.csv'
+    image_path = './data/images_{}x{}_2/'.format(frame_size[0],frame_size[1])
+    image_dir = image_path + 'images/'
+    img_csv = 'image.csv'
+    
     results_f = results_p + '{}_restults.txt'.format(method)
-    kernel = 'rbf' ### 'linear','poly'
+    class_names = ['rest', 'focus']
+    kernel = 'poly' ### 'linear','poly'
     C = 1.0    
     
     # param_grid={'C':[0.1,1,10,100],'gamma':[0.0001,0.001,0.1,1],'kernel':['rbf','poly']}
@@ -72,37 +71,93 @@ def svm_f(batch_size, frame_size, results_p, method):
         transforms.ToTensor()
     ])
 
-    cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=1)
+    kf = KFold(n_splits=5, shuffle=True)
 
-    train_loader, test_loader, img_dataset = create_datasets(batch_size,transform, image_dir, rest_csv, focus_csv)
+    train_loader, test_loader, img_dataset = create_datasets(batch_size,transform, image_path, image_dir, img_csv)
       
     x = []
     y = []
     
-    for i in range(len(img_dataset)):
+    for i in range(len(img_dataset)):    
         x.append(img_dataset[i][0].numpy().flatten())
         y.append(img_dataset[i][1].numpy())
-    
+        
+    print(img_dataset[i][0].numpy().flatten())
     x = np.asarray(x)
     y = np.asarray(y)
+    
+    rest_true = 0
+    rest_false = 0
+    focus_true = 0
+    focus_false = 0  
+    
+    focus_pre_ls = []
+    rest_pre_ls = []
+    acc_ls = []
+    for i in range(3):
+        k = 0
+        
+        for train_index, test_index in kf.split(x):
+            x_train, x_test = x[train_index], x[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+            
+            x_train, y_train = shuffle(x_train, y_train)
+            x_test, y_test = shuffle(x_test, y_test)
+            
+            model.fit(x_train,y_train)
+            y_pred=model.predict(x_test)
+            
+            print(f"The model is {accuracy_score(y_pred,y_test)*100}% accurate")
+          
+            ## calculate how many samples are predicted correctly.
+            for t, p in zip(y_test, y_pred):
+                if t == p and t.item() == 0:
+                    rest_true += 1
+                elif t != p and t.item() == 0:
+                    rest_false += 1
+                elif t == p and t.item() == 1:
+                    focus_true += 1
+                else:
+                    focus_false += 1
+            
+            rest_precision = rest_true/(rest_true+focus_false)
+            focus_precision = focus_true/(focus_true+rest_false)
+            acc = accuracy_score(y_test, y_pred)
+            
+            rest_pre_ls.append(rest_precision)
+            focus_pre_ls.append(focus_precision)
+            acc_ls.append(acc)
+            
+            print("accuracy is %0.4f \n" % (acc))
+            print("focus has %0.4f precision\n" % (focus_precision))
+            print("rest has %0.4f precision \n" % (rest_precision))   
+    
+            now = datetime.now() 
+            date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+            with open(results_f, "a") as f:
+                f.write('*'*40 + date_time + '*'*40 +'\n')
+                f.writelines("accuracy is %0.4f \n" % (acc))
+                f.writelines("focus has %0.4f precision\n" % (focus_precision))
+                f.writelines("rest has %0.4f precision \n" % (rest_precision))
+             
+            k += 1    
+            polt_confusion(model, x_test, y_test, class_names,results_p, i, k)
+    
+    acc_array = np.array(acc_ls)    
+    rest_pre_array = np.array(rest_pre_ls)    
+    focus_pre_array = np.array(focus_pre_ls)  
+    print("%0.4f accuracy with a standard deviation of %0.4f" % (acc_array.mean(), acc_array.std()))
+    print("focus has %0.4f precision with a standard deviation of %0.4f \n" % (focus_pre_array.mean(), focus_pre_array.std()))
+    print("rest has %0.4f precision with a standard deviation of %0.4f \n" % (rest_pre_array.mean(), rest_pre_array.std()))   
 
-    scores_acc = cross_val_score(model, x, y, scoring='accuracy', cv=cv, n_jobs=-1)
-    rest_precision = cross_val_score(model, x, 1-y, scoring='precision', cv=cv, n_jobs=-1)
-    focus_precision = cross_val_score(model, x, y, scoring='precision', cv=cv, n_jobs=-1)
-    
-    print("%0.4f accuracy with a standard deviation of %0.4f" % (scores_acc.mean(), scores_acc.std()))
-    print("focus has %0.4f precision with a standard deviation of %0.4f \n" % (focus_precision.mean(), focus_precision.std()))
-    print("rest has %0.4f precision with a standard deviation of %0.4f \n" % (rest_precision.mean(), rest_precision.std()))   
-    
     now = datetime.now() 
     date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
     with open(results_f, "a") as f:
         f.write('*'*40 + date_time + '*'*40 +'\n')
-        f.writelines("%0.4f accuracy with a standard deviation of %0.4f \n" % (scores_acc.mean(), scores_acc.std()))
-        f.writelines("focus has %0.4f precision with a standard deviation of %0.4f \n" % (focus_precision.mean(), focus_precision.std()))
-        f.writelines("rest has %0.4f precision with a standard deviation of %0.4f \n" % (rest_precision.mean(), rest_precision.std()))
-        
-    compute_confusion(kernel, C, x, y, results_p)
+        f.writelines("%0.4f accuracy with a standard deviation of %0.4f \n" % (acc_array.mean(), acc_array.std()))
+        f.writelines("focus has %0.4f precision with a standard deviation of %0.4f \n" % (focus_pre_array.mean(), focus_pre_array.std()))
+        f.writelines("rest has %0.4f precision with a standard deviation of %0.4f \n" % (rest_pre_array.mean(), rest_pre_array.std()))
+                
     
 def svm_ecg(results_ecg, method):
     
@@ -110,44 +165,94 @@ def svm_ecg(results_ecg, method):
         os.makedirs(results_ecg)
         
     results_f = results_ecg + '{}_restults.txt'.format(method)
-    x,y = create_ecg_data(time_s = 480)
+    class_names = ['rest', 'focus']
+    x,y = create_ecg_data(time_s = 360)
     
     print(x)
-    print(y)    
-    cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=1)
-  
-    model = svm.SVC(kernel='poly', degree = 2, C =500, max_iter=100000)
-   
+    print(y) 
+       
+    # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=1)
+    model= svm.SVC(kernel='poly', degree = 2, C =500, max_iter=100000)
+    kf = KFold(n_splits=5, shuffle=True)
     
+    rest_true = 0
+    rest_false = 0
+    focus_true = 0
+    focus_false = 0  
     
-    scores_acc = cross_val_score(model, x, y, scoring='accuracy', cv=cv, n_jobs=-1)
+    focus_pre_ls = []
+    rest_pre_ls = []
+    acc_ls = []
+    for i in range(3):
+        k = 0      
+        for train_index, test_index in kf.split(x):
+            x_train, x_test = x[train_index], x[test_index]
+            y_train, y_test = y[train_index], y[test_index]
+            
+            x_train, y_train = shuffle(x_train, y_train)
+            x_test, y_test = shuffle(x_test, y_test)
+            
+            model.fit(x_train,y_train)
+            y_pred=model.predict(x_test)
+            
+            print(f"The model is {accuracy_score(y_pred,y_test)*100}% accurate")
+          
+            ## calculate how many samples are predicted correctly.
+            for t, p in zip(y_test, y_pred):
+                if t == p and t.item() == 0:
+                    rest_true += 1
+                elif t != p and t.item() == 0:
+                    rest_false += 1
+                elif t == p and t.item() == 1:
+                    focus_true += 1
+                else:
+                    focus_false += 1
+            
+            rest_precision = rest_true/(rest_true+focus_false)
+            focus_precision = focus_true/(focus_true+rest_false)
+            acc = accuracy_score(y_test, y_pred)
+            
+            rest_pre_ls.append(rest_precision)
+            focus_pre_ls.append(focus_precision)
+            acc_ls.append(acc)
+            
+            print("accuracy is %0.4f \n" % (acc))
+            print("focus has %0.4f precision\n" % (focus_precision))
+            print("rest has %0.4f precision \n" % (rest_precision))   
+    
+            now = datetime.now() 
+            date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+            with open(results_f, "a") as f:
+                f.write('*'*40 + date_time + '*'*40 +'\n')
+                f.writelines("accuracy is %0.4f \n" % (acc))
+                f.writelines("focus has %0.4f precision\n" % (focus_precision))
+                f.writelines("rest has %0.4f precision \n" % (rest_precision))
+             
+            k += 1    
+            polt_confusion(model, x_test, y_test, class_names,results_ecg, i, k)
+    
+    acc_array = np.array(acc_ls)    
+    rest_pre_array = np.array(rest_pre_ls)    
+    focus_pre_array = np.array(focus_pre_ls)  
+    print("%0.4f accuracy with a standard deviation of %0.4f" % (acc_array.mean(), acc_array.std()))
+    print("focus has %0.4f precision with a standard deviation of %0.4f \n" % (focus_pre_array.mean(), focus_pre_array.std()))
+    print("rest has %0.4f precision with a standard deviation of %0.4f \n" % (rest_pre_array.mean(), rest_pre_array.std()))   
 
-    print("%0.2f accuracy with a standard deviation of %0.2f" % (scores_acc.mean(), scores_acc.std()))
-
-    
-    
     now = datetime.now() 
     date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
     with open(results_f, "a") as f:
         f.write('*'*40 + date_time + '*'*40 +'\n')
-        f.writelines("%0.4f accuracy with a standard deviation of %0.4f \n" % (scores_acc.mean(), scores_acc.std()))
-
-    for i in range(15):
-        x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.20,stratify=y)   
-        model.fit(x_train,y_train)
-        y_pred=model.predict(x_test)
-        print(f"The model is {accuracy_score(y_pred,y_test)*100}% accurate")
-        class_names = ['rest', 'focus']
-        polt_confusion(model, x_test, y_test, class_names,results_ecg,i)
-    
+        f.writelines("%0.4f accuracy with a standard deviation of %0.4f \n" % (acc_array.mean(), acc_array.std()))
+        f.writelines("focus has %0.4f precision with a standard deviation of %0.4f \n" % (focus_pre_array.mean(), focus_pre_array.std()))
+        f.writelines("rest has %0.4f precision with a standard deviation of %0.4f \n" % (rest_pre_array.mean(), rest_pre_array.std()))
    
 if __name__=="__main__":
     batch_size = 64
     frame_size = (28,28)
     result_p = './facial_image_results/'
     result_ecg = './ecg_results/'
-    svm_f(batch_size, frame_size, result_p, method = 'svm')
-    # svm_ecg(result_ecg, method = 'svm')
+    # svm_f(batch_size, frame_size, result_p, method = 'svm')
+    svm_ecg(result_ecg, method = 'svm')
     
 
     

@@ -70,6 +70,7 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fo
                 focus_true += 1
             else:
                 focus_false += 1
+                
     rest_precision = rest_true/(rest_true+focus_false)
     focus_precision = focus_true/(focus_true+rest_false)
     print("This is the {}th repeat {}th fold".format(n, fold))            
@@ -165,12 +166,12 @@ def main(args):
     
     checkpoint = 'check_point_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
     
-    image_dir = './data/images_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
+    image_path = './data/images_{}x{}_2/'.format(args.frame_size[0],args.frame_size[1])
     image_train_dir = './data/images_train_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
     image_test_dir = './data/images_test_{}x{}/'.format(args.frame_size[0],args.frame_size[1])
     
-    rest_csv = 'rest.csv'
-    focus_csv = 'focus.csv'
+    image_dir = image_path + 'images/'
+    img_csv = 'image.csv'
     
     k_folds = 5
     repeat = 3
@@ -184,10 +185,7 @@ def main(args):
 
    
     ## both trian and test data are from all 25 videos
-    train_loader, test_loader, dataset = create_datasets(args.batch_size,transform, image_dir, rest_csv, focus_csv)
-    
-    # ### trian data is from first 21 videos and test data is from last 4 videos.
-    # train_loader, test_loader = create_datasets2(args.batch_size,transform, image_train_dir, image_test_dir, rest_csv, focus_csv)
+    train_loader, test_loader, dataset = create_datasets(args.batch_size,transform, image_path, image_dir, img_csv)
     
     test_acc = []
     rest_prec_ls = []
@@ -255,7 +253,7 @@ if __name__=="__main__":
                         help='')
     parser.add_argument('--num_epochs', type=int, default=300,
                         help='')
-    parser.add_argument('--method', type=str, default='pretrained vgg',
+    parser.add_argument('--method', type=str, default='2d cnn',
                         help='')    
     parser.add_argument('--seed', type=int, default=2021,
                         help='')    

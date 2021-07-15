@@ -52,8 +52,8 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fo
 
         pred = list(map(int, pred))
         
-        print('true y is',y)
-        print("predicted y is",pred)
+        # print('true y is',y)
+        # print("predicted y is",pred)
 
         y_pred.extend(pred)
         
@@ -167,7 +167,7 @@ def main(args):
 
     k_folds = 5
     repeat = 3
-    time_s = 540
+    time_s = 360
       # Define the K-fold Cross Validator
     kfold = KFold(n_splits=k_folds, shuffle=True)
 
@@ -179,10 +179,9 @@ def main(args):
     test_acc = []
     rest_prec_ls = []
     focus_prec_ls = []
+    
     for n in range(repeat):
-        for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):
-            
-            # Print
+        for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset)):          
             print(f'FOLD {fold}')
             print('--------------------------------')  
             train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
@@ -226,7 +225,7 @@ def main(args):
     results_f = args.results + '{}_restults.txt'.format(args.method)
     with open(results_f, "a") as f:
         f.write('*'*40 + date_time + '*'*40 +'\n')
-        f.write("Method %s: %0.2f accuracy with a standard deviation of %0.2f \n" % (args.method, acc_mean, acc_std))      
+        f.write("Method %s: %0.4f accuracy with a standard deviation of %0.4f \n" % (args.method, acc_mean, acc_std))      
         f.write("Method %s: %0.4f rest precision with a standard deviation of %0.4f \n" % (args.method, rest_mean, rest_std))
         f.write("Method %s: %0.4f focus precision with a standard deviation of %0.4f \n" % (args.method, focus_mean, focus_std))
 
@@ -235,7 +234,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--num_epochs', type=int, default=2000,
                         help='')
-    parser.add_argument('--batch_size', type=int, default=128,
+    parser.add_argument('--batch_size', type=int, default=256,
                         help='')
     parser.add_argument('--method', type=str, default='1d cnn',
                         help='')    

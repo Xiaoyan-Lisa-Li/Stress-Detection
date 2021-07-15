@@ -50,14 +50,14 @@ def find_fps(path_video):
 
     
 
-def extract_frames_m1(path_video, path_rest,path_focus, video, frame_size):
+def extract_frames_m1(path_video, path_image, video, frame_size,i):
     vidcap = cv2.VideoCapture(path_video +'StressTetris-1-'+video+'-iPhone-LightON.MOV')
     success,image = vidcap.read()
-    count = 0
+    
 
     every_ms = 5000
     last_ts = -99999
-
+    count = 0
     while success:    
         # Skip frames
         while vidcap.get(cv2.CAP_PROP_POS_MSEC) < every_ms + last_ts:
@@ -81,10 +81,10 @@ def extract_frames_m1(path_video, path_rest,path_focus, video, frame_size):
                
         
         if ((vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 120000) or (vidcap.get(cv2.CAP_PROP_POS_MSEC) >= 300000)) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) <= 540000):
-            cv2.imwrite(path_rest +"rest_%s_frame%d.jpg"%(video, count), face_frame)     # save rest frame as JPEG file 
+            cv2.imwrite(path_image +"%d_%d_rest.jpg"%(i,count), face_frame)     # save rest frame as JPEG file 
             print('Read a new frame(rest): %d'%(vidcap.get(cv2.CAP_PROP_POS_MSEC)))
         elif (vidcap.get(cv2.CAP_PROP_POS_MSEC) > 120000) and (vidcap.get(cv2.CAP_PROP_POS_MSEC) < 300000):
-            cv2.imwrite(path_focus +"focus_%s_frame%d.jpg"%(video, count), face_frame)   # save frame as JPEG file 
+            cv2.imwrite(path_image +"%d_%d_focus.jpg"%(i,count), face_frame)   # save frame as JPEG file 
             print('Read a new frame(focus): %d'%(vidcap.get(cv2.CAP_PROP_POS_MSEC)))
          
         count += 1
@@ -94,53 +94,38 @@ def extract_frames_m1(path_video, path_rest,path_focus, video, frame_size):
         
 def m1(frame_size, path_video):
     
-    path_rest_img = './data/images_{}x{}/rest/'.format(frame_size[0],frame_size[1])
-    path_focus_img = './data/images_{}x{}/focus/'.format(frame_size[0],frame_size[1])
-    
-    path_train_rest = './data/data2/images_train_{}x{}/rest/'.format(frame_size[0],frame_size[1])
-    path_train_focus = './data/data2/images_train_{}x{}/focus/'.format(frame_size[0],frame_size[1])
-    
-    path_test_rest = './data/data2/images_test_{}x{}/rest/'.format(frame_size[0],frame_size[1])
-    path_test_focus = './data/data2/images_test_{}x{}/focus/'.format(frame_size[0],frame_size[1])
-    
+    path_img = './data/images_{}x{}_2/images/'.format(frame_size[0],frame_size[1])
+    path_train_img = './data/data2/images_train_{}x{}/images/'.format(frame_size[0],frame_size[1])  
+    path_test_img = './data/data2/images_test_{}x{}/images/'.format(frame_size[0],frame_size[1])
+   
+      
 
-    if not os.path.exists(path_rest_img):
-        os.makedirs(path_rest_img)
-    if not os.path.exists(path_focus_img):
-        os.makedirs(path_focus_img)
-        
-    if not os.path.exists(path_train_rest):
-        os.makedirs(path_train_rest)
-    if not os.path.exists(path_train_focus):
-        os.makedirs(path_train_focus)
-
-    if not os.path.exists(path_test_rest):
-        os.makedirs(path_test_rest)
-    if not os.path.exists(path_test_focus):
-        os.makedirs(path_test_focus)        
-        
-        
+    if not os.path.exists(path_img):
+        os.makedirs(path_img)
+    if not os.path.exists(path_train_img):
+        os.makedirs(path_train_img)
+    if not os.path.exists(path_test_img):
+        os.makedirs(path_test_img)
+  
     # extract images from imgage folder
     video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','010-1'\
                   ,'011-1','013-1','015-1','017-1','018-1','019-1','021-1','022-1','023-1',\
                   '025-1', '026-1','027-1','028-1','030-1','032-1']
     for i in range(len(video_nums)):
-        extract_frames_m1(path_video, path_rest_img, path_focus_img, video_nums[i], frame_size)  
-        
-       
-    # # ### extract images from imgage_train folder
+        extract_frames_m1(path_video, path_img, video_nums[i], frame_size, i)  
+             
+    # #### extract images from imgage_train folder
     # video_nums = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','010-1'\
     #               ,'011-1','013-1','015-1','017-1','018-1','019-1','021-1','022-1','023-1',\
     #               '025-1', '026-1','027-1','028-1','030-1']
     # for i in range(len(video_nums)):
-    #     extract_frames_m1(path_video, path_train_rest, path_train_focus, video_nums[i], frame_size)  
+    #     extract_frames_m1(path_video, path_train_img, video_nums[i], frame_size,i)  
         
     # # extract images from imgage_test folder
     # video_nums = ['032-1']
     # for i in range(len(video_nums)):
-    #     extract_frames_m1(path_video, path_test_rest, path_test_focus, video_nums[i], frame_size)  
-         
-
+    #     extract_frames_m1(path_video, path_test_img, video_nums[i], frame_size, i)  
+    
 def m2(path_video):
     path_ROIs = './data/ROIs/'
     detector = dlib.get_frontal_face_detector()
@@ -287,15 +272,10 @@ def m2(path_video):
         print("bpm shpae",bpm_g.shape)
 
 
-        
-        
-           
-            
-                
-
+  
 if __name__=="__main__":
     
-    frame_size = (28, 28)   # frame_size = (224,224) for pretrained vgg model
+    frame_size = (224, 224)   # frame_size = (224,224) for pretrained vgg model
     path_video = './data/videos/'
     
     ### m1 function extracts facial images from each frame
