@@ -166,13 +166,14 @@ def svm_ecg(results_ecg, method):
         
     results_f = results_ecg + '{}_restults.txt'.format(method)
     class_names = ['rest', 'focus']
-    x,y = create_ecg_data(time_s = 360)
+    x,y = create_ecg_data(time_s = 540,window_s=3)
     
     print(x)
     print(y) 
        
     # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=1)
-    model= svm.SVC(kernel='poly', degree = 2, C =500, max_iter=100000)
+    # model= svm.SVC(kernel='poly', degree = 2, C =500, max_iter=100000)
+    model = svm.SVC(kernel='rbf', C=5)
     kf = KFold(n_splits=5, shuffle=True)
     
     rest_true = 0
