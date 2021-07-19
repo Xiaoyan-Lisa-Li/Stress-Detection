@@ -166,7 +166,7 @@ def svm_ecg(results_ecg, method):
         
     results_f = results_ecg + '{}_restults.txt'.format(method)
     class_names = ['rest', 'focus']
-    x,y = create_ecg_data(time_s = 540,window_s=3)
+    x,y = create_ecg_data(time_s = 360,window_s=3)
     
     print(x)
     print(y) 
