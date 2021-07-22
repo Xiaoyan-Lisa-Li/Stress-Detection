@@ -65,7 +65,7 @@ def svm_f(batch_size, frame_size, results_p, method):
     
     if kernel == 'rbf':
         C = 5.0
-    model= svm.SVC(kernel=kernel, C=C)
+    model= svm.SVC(kernel=kernel, C=C, probability=True)
     
     transform = transforms.Compose([
         transforms.ToTensor()
@@ -82,7 +82,7 @@ def svm_f(batch_size, frame_size, results_p, method):
         x.append(img_dataset[i][0].numpy().flatten())
         y.append(img_dataset[i][1].numpy())
         
-    print(img_dataset[i][0].numpy().flatten())
+    # print(img_dataset[i][0].numpy().flatten())
     x = np.asarray(x)
     y = np.asarray(y)
     
@@ -102,10 +102,12 @@ def svm_f(batch_size, frame_size, results_p, method):
             y_train, y_test = y[train_index], y[test_index]
             
             x_train, y_train = shuffle(x_train, y_train)
-            x_test, y_test = shuffle(x_test, y_test)
+            ### x_test, y_test = shuffle(x_test, y_test)
             
             model.fit(x_train,y_train)
-            y_pred=model.predict(x_test)
+            y_pred = model.predict_proba(x_test)
+            y_pred = np.argmax(y_pred, axis=1).tolist()
+
             
             print(f"The model is {accuracy_score(y_pred,y_test)*100}% accurate")
           
@@ -166,14 +168,14 @@ def svm_ecg(results_ecg, method):
         
     results_f = results_ecg + '{}_restults.txt'.format(method)
     class_names = ['rest', 'focus']
-    x,y = create_ecg_data(time_s = 360,window_s=3)
+    x,y = create_ecg_data(time_s = 540,window_s=3)
     
     print(x)
     print(y) 
        
     # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=1)
-    # model= svm.SVC(kernel='poly', degree = 2, C =500, max_iter=100000)
-    model = svm.SVC(kernel='rbf', C=5)
+    model= svm.SVC(kernel='poly', degree = 2, C =500)
+    # model = svm.SVC(kernel='rbf', C=5)
     kf = KFold(n_splits=5, shuffle=True)
     
     rest_true = 0
@@ -250,10 +252,10 @@ def svm_ecg(results_ecg, method):
 if __name__=="__main__":
     batch_size = 64
     frame_size = (28,28)
-    result_p = './facial_image_results/'
+    result_img = './facial_image_results/'
     result_ecg = './ecg_results/'
-    # svm_f(batch_size, frame_size, result_p, method = 'svm')
-    svm_ecg(result_ecg, method = 'svm')
+    svm_f(batch_size, frame_size, result_img, method = 'svm')
+    # svm_ecg(result_ecg, method = 'svm')
     
 
     

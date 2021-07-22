@@ -86,63 +86,46 @@ def create_datasets(batch_size, transform, image_path, image_dir, image_csv):
  
     return train_loader, test_loader, img_dataset
 
-def create_datasets2(batch_size, transform, image_train_path, image_test_path, image_train_dir, image_test_dir, image_csv):
-    
-    ###########################################################################
-    ### create trainloader
-    ###########################################################################
-    
-    
-    train_dataset = FacialImagesDataset(csv_file = image_train_path+image_csv, root_dir = image_train_dir,
-                                        transform = transform)
-
-    test_dataset = FacialImagesDataset(csv_file = image_test_path+image_csv, root_dir = image_test_dir,
-                                        transform = transform)
-
-   
-
-    train_loader = DataLoader(dataset=train_dataset, batch_size = batch_size, shuffle=True)
-    test_loader = DataLoader(dataset=test_dataset, batch_size = batch_size, shuffle=True)
-     
-    return train_loader, test_loader
 
 
 if __name__=="__main__":
     batch_size = 32
-    frame_size = (224,224)
+    frame_size1 = (28,28)
+    frame_size2 = (224,224)
     label_rest = 0
     label_focus = 1
     
-    image_path = './data/images_{}x{}_2/'.format(frame_size[0],frame_size[1])
-    image_dir = image_path + 'images/'
+    image_path1 = './data/images_{}x{}/'.format(frame_size1[0],frame_size1[1])
+    image_dir1 = image_path1 + 'images/'
+    image_path2 = './data/images_{}x{}/'.format(frame_size2[0],frame_size2[1])
+    image_dir2 = image_path2 + 'images/'    
     img_csv = 'image.csv'
-    
-    image_train_path = './data/data2/images_train_{}x{}/'.format(frame_size[0],frame_size[1])
-    image_test_path = './data/data2/images_test_{}x{}/'.format(frame_size[0],frame_size[1])
-    image_train_dir = image_train_path + 'images/'
-    image_test_dir = image_test_path + 'images/'
+
    
     transform = transforms.Compose([
         transforms.ToTensor(),
         # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])    
     
-    # ## both trian and test data are from all 25 videos        
-    # creat_csv(img_csv, image_path,image_dir)
-    train_loader, test_loader, img_dataset = create_datasets(batch_size, transform, image_path, image_dir, img_csv)
-
-    # # or trian data is from first 24 videos and test data is from last 1 videos.
-    # creat_csv(img_csv, image_train_path,image_train_dir)   
-    # creat_csv(img_csv, image_test_path,image_test_dir)  
-    # train_loader, test_loader = create_datasets2(batch_size, transform, image_train_path, image_test_path, image_train_dir, image_test_dir, image_csv)
+    # creat_csv(img_csv, image_path1,image_dir1)
+    # creat_csv(img_csv, image_path2,image_dir2)
     
+    train_loader1, test_loader1, img_dataset1 = create_datasets(batch_size, transform, image_path1, image_dir1, img_csv)
+    data_iter1 = iter(train_loader1)   
+    images1, labels1 = next(data_iter1)
+    print('image size is',images1.size()[0])
+    print('the corresponding label are: ', labels1)
     
-    data_iter = iter(train_loader)   
-    images, labels = next(data_iter)
-    print('image size is',images.size()[0])
-    print('the corresponding label are: ', labels)
+    plt.imshow(torchvision.utils.make_grid(images1, nrow=5).permute(1, 2, 0))
+    plt.show()
     
-    plt.imshow(torchvision.utils.make_grid(images, nrow=5).permute(1, 2, 0))
+    train_loader2, test_loader2, img_dataset2 = create_datasets(batch_size, transform, image_path2, image_dir2, img_csv)
+    data_iter2 = iter(train_loader2)   
+    images2, labels2 = next(data_iter2)
+    print('image size is',images2.size()[0])
+    print('the corresponding label are: ', labels2)
+    
+    plt.imshow(torchvision.utils.make_grid(images2, nrow=5).permute(1, 2, 0))
         
     plt.show()
     

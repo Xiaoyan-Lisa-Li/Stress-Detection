@@ -11,6 +11,7 @@ from sklearn.metrics import confusion_matrix
 from scipy import signal
 import matplotlib.pyplot as plt
 from scipy import fftpack
+from sklearn.metrics import plot_confusion_matrix
 
 MIN_HZ = 0.5       # 30 BPM - minimum allowed heart rate
 MAX_HZ = 2.        # 120 BPM - maximum allowed heart rate
@@ -223,23 +224,37 @@ def initialize_weights(model):
       if model.bias is not None:
         nn.init.constant_(model.bias.data, 0)
         
-def reset_weights(m):
-  '''
-    Try resetting model weights to avoid
-    weight leakage.
-  '''
-  for layer in m.children():
-   if hasattr(layer, 'reset_parameters'):
-    print(f'Reset trainable parameters of layer = {layer}')
-    layer.reset_parameters()
-    
-def reset_weights_vgg(alex_net):    
-    for layer in alex_net.children():
-        if type(layer) == nn.Linear:
-            layer.reset_parameters()
-            print(f'Reset trainable parameters of layer = {layer}')
 
-def plot_confusion_matirx(y_true, y_pred, method, fig_path, fold, n, labels):
+def polt_confusion(model, x_test, y_test, class_names,results, n, fold):
+    np.set_printoptions(precision=4)
+    
+    fig_path = results + 'svm_confusion/'
+    
+    if not os.path.exists(fig_path):
+        os.makedirs(fig_path)
+    
+    # Plot non-normalized confusion matrix
+    titles_options = [("Confusion matrix, without normalization", None),
+                      ("Normalized confusion matrix", 'true')]
+    
+    for title, normalize in titles_options:
+        disp = plot_confusion_matrix(model, x_test, y_test,
+                                     display_labels=class_names,
+                                     cmap=plt.cm.Blues,
+                                     normalize=normalize)
+        disp.ax_.set_title(title)
+    
+        print(title)
+        print(disp.confusion_matrix)
+        
+        print(fig_path)
+   
+        print('normalize = ',normalize)
+        plt.savefig(fig_path+"SVM_cofusion_matrix_{}_repeat{}_fold{}.png".format(normalize, n, fold))
+            
+        plt.show()
+
+def plot_confusion2(y_true, y_pred, method, fig_path, fold, n, labels):
     np.set_printoptions(precision=4)
     
     cm = confusion_matrix(y_true, y_pred, labels=labels, normalize='true')
@@ -254,3 +269,4 @@ def plot_confusion_matirx(y_true, y_pred, method, fig_path, fold, n, labels):
 
     plt.savefig(fig_path + "Repeat{}_Fold{}_{}_confusion_matrix.png".format(n, fold, method))
     plt.show()
+        
