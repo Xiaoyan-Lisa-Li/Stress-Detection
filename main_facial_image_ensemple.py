@@ -16,7 +16,6 @@ from models import *
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 import torchvision.models as models
-from SVM import svm_f
 from utils import *
 from datetime import datetime
 from sklearn.model_selection import KFold
@@ -46,7 +45,7 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fo
 
     for x_test, test_y in test_loader:
         total_num += len(test_y)
-        prob = model(x_test.cuda())
+        prob, _ = model(x_test.cuda())
         prob = prob.cpu().detach().numpy()
         
         ### the output probability
@@ -112,7 +111,7 @@ def predict(model, test_loader, checkpoint_path, epoch, method, results_path, fo
                 
     plot_confusion2(y_true, y_pred, method, fig_path, fold, n, labels = [0,1])
     
-    return  y_true, y_prob, acc
+    return  y_true, y_prob, acc, rest_precision, focus_precision
 
 def predict_svm(model, x_test, y_test, results_p, method, fold, n):
     rest_true = 0
@@ -163,9 +162,9 @@ def predict_svm(model, x_test, y_test, results_p, method, fold, n):
     class_names = ['rest', 'focus']  
     polt_confusion(model, x_test, y_test, class_names, results_p, fold, n)
     
-    return y_prob, acc
+    return y_prob, acc, rest_precision, focus_precision
 
-def train_model(model, train_loader, num_epochs, checkpoint, results_path, method, fold, n):
+def train_model(model, train_loader, test_loader, num_epochs, checkpoint, results_path, method, fold, n):
     
     checkpoint_path = results_path + checkpoint
     if not os.path.exists(checkpoint_path):
@@ -175,18 +174,18 @@ def train_model(model, train_loader, num_epochs, checkpoint, results_path, metho
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
     criterion = nn.BCELoss().cuda()
 
-    model.train()
-
     train_losses = []
+    val_losses = []
     for epoch in range(num_epochs): 
         losses = 0
         avg_loss = 0.
-        
+        val_loss = 0.
+        model.train()
         # print(train_loader)
         for i, sample_batch in enumerate(train_loader):
         
             x_train, y_train = sample_batch
-            preds = model(x_train.cuda())
+            preds, _ = model(x_train.cuda())
             optimizer.zero_grad()
 
             loss = criterion(preds.squeeze(), y_train.cuda().float())
@@ -198,17 +197,30 @@ def train_model(model, train_loader, num_epochs, checkpoint, results_path, metho
             
         avg_loss = losses / len(train_loader)            
         train_losses.append(loss.item()) 
-        
+
+        with torch.no_grad():
+            for x_val, y_val in test_loader:
+                x_val = x_val.cuda()
+                y_val = y_val.cuda()
+                
+                model.eval()
+    
+                yhat, _ = model(x_val)
+                val_l = criterion(yhat.squeeze(), y_val.float())
+                val_loss += val_l.item()
+                
+            val_losses.append(val_loss)
+            
         print('Repeat {} Fold {} Epoch {:4d}/{} Batch {}/{} Cost: {:.6f}'.format(n, fold,
             epoch, num_epochs, i, len(train_loader), loss.item()))
         
         
-        if (epoch+1) %10 == 0:
-            save_path = checkpoint_path + 'model{}_repeat{}_fold{}.pth'.format(epoch,n,fold)  
-            save_objs(model, epoch, avg_loss, optimizer, save_path)
+        # if (epoch+1) %10 == 0:
+        #     save_path = checkpoint_path + 'model{}_repeat{}_fold{}.pth'.format(epoch,n,fold)  
+        #     save_objs(model, epoch, avg_loss, optimizer, save_path)
 
     
-    plot_loss(method, train_losses, results_path, label='train')
+    plot_loss(method, train_losses, val_losses, results_path)
     
     
 
@@ -245,6 +257,13 @@ def main(args):
     acc_svm_ls = []
     rest_prec_ls = []
     focus_prec_ls = []
+    rest_cnn_ls = []
+    focus_cnn_ls = []
+    rest_vgg_ls = []
+    focus_vgg_ls = []
+    rest_svm_ls = []
+    focus_svm_ls = []
+
     rest_true = 0
     rest_false = 0
     focus_true = 0
@@ -293,20 +312,22 @@ def main(args):
             method1 = '2d_cnn'
             model_cnn=CNN_2d().cuda()
             model_cnn.apply(reset_weights)
-            train_model(model_cnn, train_loader_28, args.num_epochs, check_path_cnn, args.results, method1, fold, n)
-            y_cnn, pred_cnn, acc_cnn  = predict(model_cnn, test_loader_28, check_path_cnn, args.num_epochs-1, method1, args.results, fold, n)
+            num_epochs = 120
+            train_model(model_cnn, train_loader_28, test_loader_28, num_epochs, check_path_cnn, args.results, method1, fold, n)
+            y_cnn, pred_cnn, acc_cnn, rest_pre_cnn, focus_pre_cnn  = predict(model_cnn, test_loader_28, check_path_cnn, num_epochs-1, method1, args.results, fold, n)
             
             method2 = 'pre_vgg'
-            model_vgg = alexnet()
-            model_vgg.apply(reset_weights_vgg)
-            train_model(model_vgg, train_loader_224, args.num_epochs, check_path_vgg, args.results, method2, fold, n)
-            y_vgg, pred_vgg, acc_vgg  = predict(model_vgg, test_loader_224, check_path_vgg, args.num_epochs-1, method2, args.results, fold, n)
+            model_vgg = alexnet().cuda()
+            reset_weights_vgg(model_vgg)
+            num_epochs = 200
+            train_model(model_vgg, train_loader_224, test_loader_224, num_epochs, check_path_vgg, args.results, method2, fold, n)
+            y_vgg, pred_vgg, acc_vgg, rest_pre_vgg, focus_pre_vgg = predict(model_vgg, test_loader_224, check_path_vgg, num_epochs-1, method2, args.results, fold, n)
             
             method3 = 'svm'
             model_svm= svm.SVC(kernel='poly', probability=True)
             # model= svm.SVC(kernel='rbf', C=5.0, probability=True)
             model_svm.fit(x_train_28,y_train_28)
-            pred_svm, acc_svm = predict_svm(model_svm, x_test_28, y_test_28, args.results, method3, fold, n)
+            pred_svm, acc_svm, rest_pre_svm, focus_pre_svm = predict_svm(model_svm, x_test_28, y_test_28, args.results, method3, fold, n)
             
             print('y_cnn == y_vgg ?', y_cnn==y_vgg)
 
@@ -338,12 +359,22 @@ def main(args):
     
             rest_prec_ls.append(rest_precision)
             focus_prec_ls.append(focus_precision)
+            rest_cnn_ls.append(rest_pre_cnn)
+            focus_cnn_ls.append(focus_pre_cnn)
+            rest_vgg_ls.append(rest_pre_vgg)
+            focus_vgg_ls.append(focus_pre_vgg)
+            rest_svm_ls.append(rest_pre_svm)
+            focus_svm_ls.append(focus_pre_svm)            
             acc_en_ls.append(acc_en)
             acc_cnn_ls.append(acc_cnn)
             acc_vgg_ls.append(acc_vgg)
             acc_svm_ls.append(acc_svm)
             
-                            
+                                
+            fig_path = results_path + "/emsemble_figures/"
+            if not os.path.exists(fig_path):
+                os.makedirs(fig_path)
+            plot_confusion2(y_vgg, y_en, args.method, fig_path, fold, n, labels = [0,1])              
             
     acc_en_mean = np.array(acc_en_ls).mean()
     acc_en_std = np.array(acc_en_ls).std()
@@ -355,17 +386,38 @@ def main(args):
     acc_svm_std = np.array(acc_svm_ls).std()
 
     rest_mean = np.array(rest_prec_ls).mean()
-    rest_std = np.array(rest_prec_ls).std()
-    
+    rest_std = np.array(rest_prec_ls).std()  
     focus_mean = np.array(focus_prec_ls).mean()
     focus_std = np.array(focus_prec_ls).std()
+
+    rest_cnn_mean = np.array(rest_cnn_ls).mean()
+    rest_cnn_std = np.array(rest_cnn_ls).std()  
+    focus_cnn_mean = np.array(focus_cnn_ls).mean()
+    focus_cnn_std = np.array(focus_cnn_ls).std()
+
+    rest_vgg_mean = np.array(rest_vgg_ls).mean()
+    rest_vgg_std = np.array(rest_vgg_ls).std()  
+    focus_vgg_mean = np.array(focus_vgg_ls).mean()
+    focus_vgg_std = np.array(focus_vgg_ls).std()
+
+    rest_svm_mean = np.array(rest_svm_ls).mean()
+    rest_svm_std = np.array(rest_svm_ls).std()  
+    focus_svm_mean = np.array(focus_svm_ls).mean()
+    focus_svm_std = np.array(focus_svm_ls).std()    
+    
     
     print("Method %s: %0.4f accuracy with a standard deviation of %0.4f" % (args.method, acc_en_mean, acc_en_std))
     print("Method %s: %0.4f accuracy with a standard deviation of %0.4f" % (method1, acc_cnn_mean, acc_cnn_std))
     print("Method %s: %0.4f accuracy with a standard deviation of %0.4f" % (method2, acc_vgg_mean, acc_vgg_std))
     print("Method %s: %0.4f accuracy with a standard deviation of %0.4f" % (method3, acc_svm_mean, acc_svm_std))
     print("Method %s: %0.4f rest precision with a standard deviation of %0.4f" % (args.method, rest_mean, rest_std))
-    print("Method %s: %0.4f focus with a standard deviation of %0.4f" % (args.method, focus_mean, focus_std))
+    print("Method %s: %0.4f focus precision with a standard deviation of %0.4f" % (args.method, focus_mean, focus_std))
+    print("Method 2dcnn: %0.4f rest precision with a standard deviation of %0.4f \n" % (rest_cnn_mean, rest_cnn_std))
+    print("Method 2dcnn: %0.4f focus precision with a standard deviation of %0.4f \n" % (focus_cnn_mean, focus_cnn_std))
+    print("Method vgg: %0.4f rest precision with a standard deviation of %0.4f \n" % (rest_vgg_mean, rest_vgg_std))
+    print("Method vgg: %0.4f focus precision with a standard deviation of %0.4f \n" % (focus_vgg_mean, focus_vgg_std))
+    print("Method svm: %0.4f rest precision with a standard deviation of %0.4f \n" % (rest_svm_mean, rest_svm_std))
+    print("Method svm: %0.4f focus precision with a standard deviation of %0.4f \n" % (focus_svm_mean, focus_svm_std))   
     
     now = datetime.now() 
     date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
@@ -377,8 +429,13 @@ def main(args):
         f.write("Method %s: %0.4f accuracy with a standard deviation of %0.4f \n" % (method2, acc_vgg_mean, acc_vgg_std))
         f.write("Method %s: %0.4f accuracy with a standard deviation of %0.4f \n" % (method3, acc_svm_mean, acc_svm_std))    
         f.write("Method %s: %0.4f rest precision with a standard deviation of %0.4f \n" % (args.method, rest_mean, rest_std))
-        f.write("Method %s: %0.4f focus with a standard deviation of %0.4f \n" % (args.method, focus_mean, focus_std))
-        
+        f.write("Method %s: %0.4f focus precision with a standard deviation of %0.4f \n" % (args.method, focus_mean, focus_std))
+        f.write("Method 2dcnn: %0.4f rest precision with a standard deviation of %0.4f \n" % (rest_cnn_mean, rest_cnn_std))
+        f.write("Method 2dcnn: %0.4f focus precision with a standard deviation of %0.4f \n" % (focus_cnn_mean, focus_cnn_std))
+        f.write("Method vgg: %0.4f rest precision with a standard deviation of %0.4f \n" % (rest_vgg_mean, rest_vgg_std))
+        f.write("Method vgg: %0.4f focus precision with a standard deviation of %0.4f \n" % (focus_vgg_mean, focus_vgg_std))
+        f.write("Method svm: %0.4f rest precision with a standard deviation of %0.4f \n" % (rest_svm_mean, rest_svm_std))
+        f.write("Method svm: %0.4f focus precision with a standard deviation of %0.4f \n" % (focus_svm_mean, focus_svm_std))        
 if __name__=="__main__":
     
     parser = argparse.ArgumentParser(description='')
@@ -390,7 +447,7 @@ if __name__=="__main__":
                         help='')    
     parser.add_argument('--seed', type=int, default=2021,
                         help='')    
-    parser.add_argument('--results', type=str, default='./facial_image_results/',
+    parser.add_argument('--results', type=str, default='./facial_image_results/ensemble_results/',
                         help='')  
     
     args = parser.parse_args()

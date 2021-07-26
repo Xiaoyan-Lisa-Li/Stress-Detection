@@ -16,12 +16,12 @@ def reset_weights(m):
     weight leakage.
   '''
   for layer in m.children():
-   if hasattr(layer, 'reset_parameters'):
-    print(f'Reset trainable parameters of layer = {layer}')
-    layer.reset_parameters()
+      if hasattr(layer, 'reset_parameters'):
+          print(f'Reset trainable parameters of layer = {layer}')
+          layer.reset_parameters()
     
 def reset_weights_vgg(alex_net):    
-    for layer in alex_net.children():
+    for layer in alex_net.net.classifier:
         if type(layer) == nn.Linear:
             layer.reset_parameters()
             print(f'Reset trainable parameters of layer = {layer}')
@@ -124,10 +124,10 @@ class CNN_2d(nn.Module):
         # print("input.shape",input.size())
         x = self.conv1_drop(F.max_pool2d(self.conv1_bn(F.relu(self.conv1(input))), 2))       
         x = self.conv2_drop(F.max_pool2d(self.conv2_bn(F.relu(self.conv2(x))), 2))
-        x = x.view(-1, 1600) #reshape
-        x = F.relu(self.dense1(x))
-        x = F.sigmoid(self.dense2(x))
-        return x
+        x0 = x.view(-1, 1600) #reshape
+        x1 = F.relu(self.dense1(x0))
+        x = F.sigmoid(self.dense2(x1))
+        return x,x0
 # net = CNN_Net()
 # print(net)
 
@@ -157,10 +157,10 @@ class CNN_1d(nn.Module):
         x = self.conv1_drop(self.maxpool1(self.conv1_bn(F.relu(self.conv1(input)))))       
         x = self.conv2_drop(self.maxpool2(self.conv2_bn(F.relu(self.conv2(x)))))
         x = self.conv3_drop(self.maxpool3(self.conv3_bn(F.relu(self.conv3(x)))))
-        x = x.view(-1, 320) ###reshape 3 seconds (-1,320); 6seconds view(-1, 672);
-        x = F.relu(self.dense1(x))
-        x = F.sigmoid(self.dense2(x))
-        return x
+        x_0 = x.view(-1, 320) ###reshape 3 seconds (-1,320); 6seconds view(-1, 672);
+        x_1 = F.relu(self.dense1(x_0))
+        x = F.sigmoid(self.dense2(x_1))
+        return x, x_0
 
 # net = CNN_1d()
 # print(net)
@@ -171,17 +171,24 @@ class alexnet(nn.Module):
     def __init__(self, num_classes: int = 1) -> None:
         super(alexnet, self).__init__()
         self.net = models.vgg11(pretrained=True)
+        self.features = nn.Sequential(*list(self.net.children())[:-1])
         for p in self.net.features.parameters():
             p.requires_grad=False
+        # for p in self.net.avgpool.parameters():
+        #     p.requires_grad=False
+        # for p in self.net.classifier[:-5].parameters():
+        #     p.requires_grad=False        
         self.net.classifier[-1] = nn.Linear(4096, num_classes)
-        self.net.cuda()
         
-    def forward(self,x):
-        x = self.net(x)
-        x = F.sigmoid(x)
-        return x
+       
+    def forward(self,input):
+        x0 = self.net(input)
+        x = F.sigmoid(x0)
+        x_f = self.features(input)
+        x_f = x_f.view(-1,25088)
+        return x, x_f
         
-# alex_net = alexnet()
-# print(alex_net)
+alex_net = alexnet()
+print(alex_net)
     
 
