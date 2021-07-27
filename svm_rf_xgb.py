@@ -17,61 +17,46 @@ from numpy import std, mean
 from ecg_data_process import create_ecg_data
 from sklearn.utils import shuffle
 from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
+from utils import plot_confusion
 
-def polt_confusion(model, x_test, y_test, class_names,results, i, k):
-    np.set_printoptions(precision=4)
+
+def svm_rf_xgb_f(batch_size, frame_size, method):
+  
+    # param_grid={'C':[0.1,1,10,100],'gamma':[0.0001,0.001,0.1,1],'kernel':['rbf','poly']}
+    # svc=svm.SVC()
+    # model=GridSearchCV(svc,param_grid)
     
-    fig_path = results + 'svm_confusion/'
+    if method== 'svm':
+        results_p = './facial_image_results/svm/'
+        model= svm.SVC(kernel='poly', C=1., probability=True)
+        # model= svm.SVC(kernel='rbf', C=5., probability=True)     
     
-    if not os.path.exists(fig_path):
-        os.makedirs(fig_path)
-    
-    # Plot non-normalized confusion matrix
-    titles_options = [("Confusion matrix, without normalization", None),
-                      ("Normalized confusion matrix", 'true')]
-    
-    for title, normalize in titles_options:
-        disp = plot_confusion_matrix(model, x_test, y_test,
-                                     display_labels=class_names,
-                                     cmap=plt.cm.Blues,
-                                     normalize=normalize)
-        disp.ax_.set_title(title)
-    
-        print(title)
-        print(disp.confusion_matrix)
-        
-        print(fig_path)
-   
-        print('normalize = ',normalize)
-        plt.savefig(fig_path+"SVM_cofusion_matrix_{}_{}_{}.png".format(normalize, i, k))
+    if method == 'rf':
+        results_p = './facial_image_results/random_forest/'
+        model = RandomForestClassifier(n_estimators=200, random_state=0)
+    if method == 'xgb':
+        results_p = './facial_image_results/xgboost/'
+        # model = xgb.XGBClassifier(objective="binary:logistic", learning_rate=0.5,max_depth=5,n_estimators=200, random_state=42)
+        model = xgb.XGBClassifier(learning_rate =0.1, n_estimators=1000, max_depth=5, min_child_weight=1, gamma=0,  subsample=0.8,\
+                                  colsample_bytree=0.8, objective= 'binary:logistic', nthread=4, scale_pos_weight=1, seed=27)
             
-        plt.show()
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+
+    kf = KFold(n_splits=5, shuffle=True)
     
-
-
-def svm_f(batch_size, frame_size, results_p, method):
+    if not os.path.exists(results_p):
+        os.makedirs(results_p)
+        
     image_path = './data/images_{}x{}_2/'.format(frame_size[0],frame_size[1])
     image_dir = image_path + 'images/'
     img_csv = 'image.csv'
     
     results_f = results_p + '{}_restults.txt'.format(method)
     class_names = ['rest', 'focus']
-    kernel = 'poly' ### 'linear','poly'
-    C = 1.0    
-    
-    # param_grid={'C':[0.1,1,10,100],'gamma':[0.0001,0.001,0.1,1],'kernel':['rbf','poly']}
-    # svc=svm.SVC()
-    # model=GridSearchCV(svc,param_grid)
-    
-    if kernel == 'rbf':
-        C = 5.0
-    model= svm.SVC(kernel=kernel, C=C, probability=True)
-    
-    transform = transforms.Compose([
-        transforms.ToTensor()
-    ])
-
-    kf = KFold(n_splits=5, shuffle=True)
 
     train_loader, test_loader, img_dataset = create_datasets(batch_size,transform, image_path, image_dir, img_csv)
       
@@ -138,12 +123,13 @@ def svm_f(batch_size, frame_size, results_p, method):
             date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
             with open(results_f, "a") as f:
                 f.write('*'*40 + date_time + '*'*40 +'\n')
+                f.writelines("repeat {}, fold {} \n".format(i, k))
                 f.writelines("accuracy is %0.4f \n" % (acc))
                 f.writelines("focus has %0.4f precision\n" % (focus_precision))
                 f.writelines("rest has %0.4f precision \n" % (rest_precision))
              
             k += 1    
-            polt_confusion(model, x_test, y_test, class_names,results_p, i, k)
+            plot_confusion(model, x_test, y_test, class_names,results_p, method, i, k)
     
     acc_array = np.array(acc_ls)    
     rest_pre_array = np.array(rest_pre_ls)    
@@ -161,22 +147,34 @@ def svm_f(batch_size, frame_size, results_p, method):
         f.writelines("rest has %0.4f precision with a standard deviation of %0.4f \n" % (rest_pre_array.mean(), rest_pre_array.std()))
                 
     
-def svm_ecg(results_ecg, method):
+def svm_ecg(method, seconds):
+    
+    if method== 'svm':
+        results_ecg = './ecg_results/svm/'
+        model= svm.SVC(kernel='poly', degree = 2, C =500)
+        # model= svm.SVC(kernel='rbf', C=5.)     
+    
+    if method == 'rf':
+        results_ecg = './ecg_results/random_forest/'
+        model = RandomForestClassifier(n_estimators=300, random_state=0)
+    if method == 'xgb':
+        results_ecg = './ecg_results/xgboost/'
+        # model = xgb.XGBClassifier(objective="binary:logistic", learning_rate=0.1, max_depth=30, n_estimators=300, random_state=42)
+        model = xgb.XGBClassifier(learning_rate =0.1, n_estimators=1000, max_depth=5, min_child_weight=1, gamma=0,  subsample=0.8,\
+                                  colsample_bytree=0.8, objective= 'binary:logistic', nthread=4, scale_pos_weight=1, seed=27)
     
     if not os.path.exists(results_ecg):
         os.makedirs(results_ecg)
         
     results_f = results_ecg + '{}_restults.txt'.format(method)
     class_names = ['rest', 'focus']
-    x,y = create_ecg_data(time_s = 540,window_s=3)
     
-    print(x)
-    print(y) 
-       
-    # cv = RepeatedKFold(n_splits=5, n_repeats=3, random_state=1)
-    model= svm.SVC(kernel='poly', degree = 2, C =500)
-    # model = svm.SVC(kernel='rbf', C=5)
+    x,y = create_ecg_data(time_s = seconds, window_s=3)
+
+    
+    
     kf = KFold(n_splits=5, shuffle=True)
+    
     
     rest_true = 0
     rest_false = 0
@@ -227,12 +225,14 @@ def svm_ecg(results_ecg, method):
             date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
             with open(results_f, "a") as f:
                 f.write('*'*40 + date_time + '*'*40 +'\n')
+                f.writelines("repeat {}, fold {} \n".format(i, k))
                 f.writelines("accuracy is %0.4f \n" % (acc))
                 f.writelines("focus has %0.4f precision\n" % (focus_precision))
                 f.writelines("rest has %0.4f precision \n" % (rest_precision))
              
             k += 1    
-            polt_confusion(model, x_test, y_test, class_names,results_ecg, i, k)
+            plot_confusion(model, x_test, y_test, class_names,results_ecg, method, i, k)
+        
     
     acc_array = np.array(acc_ls)    
     rest_pre_array = np.array(rest_pre_ls)    
@@ -252,10 +252,9 @@ def svm_ecg(results_ecg, method):
 if __name__=="__main__":
     batch_size = 64
     frame_size = (28,28)
-    result_img = './facial_image_results/'
-    result_ecg = './ecg_results/'
-    svm_f(batch_size, frame_size, result_img, method = 'svm')
-    # svm_ecg(result_ecg, method = 'svm')
+    method = ['svm','rf','xgb']
+    svm_rf_xgb_f(batch_size, frame_size, method = method[2])
+    # svm_ecg(method = 'xgb', seconds=360)
     
 
     
