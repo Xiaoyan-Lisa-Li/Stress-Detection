@@ -399,7 +399,7 @@ def vgg_ecg_img(args):
 
     k_folds = 5
     repeat = 3
-    time_s = 540
+    time_s = 360
     
     # Define the K-fold Cross Validator
     kfold = KFold(n_splits=k_folds, shuffle=True)
@@ -421,7 +421,7 @@ def vgg_ecg_img(args):
             test_loader = torch.utils.data.DataLoader(
                               dataset, batch_size=batch_size, sampler=test_subsampler)
 
-            model = alexnet()
+            model = alexnet().cuda()
             reset_weights_vgg(model)
 
             checkpoint_path = results + checkpoint
@@ -480,6 +480,6 @@ if __name__=="__main__":
     if not os.path.exists(args.results):
         os.makedirs(args.results)
     
-    cnn_ecg(args)
-    # vgg_ecg_img(args)
+    # cnn_ecg(args)
+    vgg_ecg_img(args)
     

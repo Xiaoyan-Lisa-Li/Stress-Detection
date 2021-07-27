@@ -96,7 +96,7 @@ def create_ecg_image(time_s, window_s):
     
     if not os.path.exists(path_img):
         os.makedirs(path_img)
-    
+    # 
     files = ['001-2','002-1','003-1','004-2','005-1','006-2','007-1','008-1','009-1','010-1'\
                    ,'011-1','013-1','015-1','016-1','017-1','018-1','019-1','021-1','022-1','023-1',\
                    '024-1','025-1', '026-1','027-1','028-1','029-1','030-1','031-1','033-1','034-1','035-1']
@@ -195,9 +195,9 @@ def create_ecg_data(time_s, window_s):
     return np.array(x), np.array(y)
 
 if __name__=="__main__":
-    time_s = 540
+    time_s = 360
     
-    ## create ecg signal images
+    # # create ecg signal images
     # create_ecg_image(time_s,3)
     
     image_path = './data/ecg_img/'

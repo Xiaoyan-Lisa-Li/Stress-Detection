@@ -180,13 +180,15 @@ def filter_signal_data(values, fps):
     filtered = butterworth_filter(demeaned, MIN_HZ, MAX_HZ, fps, order=5)
     return filtered  
 
-def plot_loss(model, losses, results_path, label):
+def plot_loss(model, train_loss, val_loss, results_path):
     plt.figure(figsize=(10,5))
-    plt.title("Training {}".format(label))
-    plt.plot(losses,label=label)
+    plt.title("Training losses")
+    plt.plot(train_loss,label='train loss')
+    plt.plot(val_loss, label='valid loss')
     plt.xlabel("iterations")
     plt.ylabel("Loss")
     plt.legend()
+    plt.grid()
     plt.savefig(results_path+"{}-train-losses.png".format(model))
     plt.show()
     
@@ -225,10 +227,10 @@ def initialize_weights(model):
         nn.init.constant_(model.bias.data, 0)
         
 
-def polt_confusion(model, x_test, y_test, class_names,results, n, fold):
+def plot_confusion(model, x_test, y_test, class_names,results,method, n, fold):
     np.set_printoptions(precision=4)
     
-    fig_path = results + 'svm_confusion/'
+    fig_path = results + '{}_figures/'.format(method)
     
     if not os.path.exists(fig_path):
         os.makedirs(fig_path)
@@ -250,7 +252,7 @@ def polt_confusion(model, x_test, y_test, class_names,results, n, fold):
         print(fig_path)
    
         print('normalize = ',normalize)
-        plt.savefig(fig_path+"SVM_cofusion_matrix_{}_repeat{}_fold{}.png".format(normalize, n, fold))
+        plt.savefig(fig_path+"{}_cofusion_matrix_{}_repeat{}_fold{}.png".format(method, normalize, n, fold))
             
         plt.show()
 
