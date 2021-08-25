@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+'''
+@author: Xiaoyan
+'''
 
 import os
 import argparse
@@ -30,7 +33,7 @@ from ecg_data_process import create_ecg_data
 from scipy.optimize import differential_evolution
 from numpy import tensordot
 from numpy.linalg import norm
-import torchvision
+
 
     
 def predict_img(args, model, test_loader, epoch, method, path, fold, n, test_ids): 
@@ -43,8 +46,8 @@ def predict_img(args, model, test_loader, epoch, method, path, fold, n, test_ids
             
     results_f = results_path + '{}_restults.txt'.format(method) 
     
-        
-    model.cuda()
+    if args.cuda:    
+        model.cuda()
     model.eval()
     test_acc = 0
     total_num = 0
@@ -65,7 +68,7 @@ def predict_img(args, model, test_loader, epoch, method, path, fold, n, test_ids
     for x_test, test_y in test_loader:
         total_num += len(test_y)
         with torch.no_grad():
-            yhats, _ = model(x_test.cuda())
+            yhats, _ = model(to_gpu(args.cuda, x_test))
         
         yhats = yhats.cpu().detach().numpy()       
         ### the output probability        
@@ -184,7 +187,7 @@ def predict_img(args, model, test_loader, epoch, method, path, fold, n, test_ids
                 
     plot_confusion2(y_true, y_pred, method, fig_path, fold, n, labels = [0,1])
     
-    return  y_true, y_pred, y_prob, acc, rest_precision, focus_precision, rest_recall, focus_recall, pred_res, pred_foc, true_res, true_foc
+    return  y_true, y_pred, y_prob, acc, rest_precision, focus_precision, rest_recall, focus_recall, correct_id_res, incorrect_id_res, correct_id_foc, incorrect_id_foc
 
 def predict_svm_xgb(args, model, x_test, y_test, path, method, fold, n, test_ids):
     rest_true = 0
@@ -308,7 +311,7 @@ def predict_svm_xgb(args, model, x_test, y_test, path, method, fold, n, test_ids
     pickle.dump(y_test, open(results_true, "wb"))
                
     
-    return y_pred, yhats, acc, rest_precision, focus_precision, rest_recall, focus_recall, pred_res, pred_foc, true_res, true_foc
+    return y_pred, yhats, acc, rest_precision, focus_precision, rest_recall, focus_recall, correct_id_res, incorrect_id_res, correct_id_foc, incorrect_id_foc
 
 def train_model(model, train_loader, test_loader, num_epochs, path, method, fold, n):
     results_path = path + '{}/'.format(method) 
@@ -317,7 +320,9 @@ def train_model(model, train_loader, test_loader, num_epochs, path, method, fold
 
     
     optimizer = optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-    criterion = nn.BCELoss().cuda()
+    criterion = nn.BCELoss()
+    if args.cuda:
+        criterion = criterion.cuda()
 
     train_losses = []
     val_losses = []
@@ -330,10 +335,10 @@ def train_model(model, train_loader, test_loader, num_epochs, path, method, fold
         for i, sample_batch in enumerate(train_loader):
         
             x_train, y_train = sample_batch
-            preds, _ = model(x_train.cuda())
+            preds, _ = model(to_gpu(args.cuda, x_train))
             optimizer.zero_grad()
 
-            loss = criterion(preds.squeeze(), y_train.cuda().float())
+            loss = criterion(preds.squeeze(), to_gpu(args.cuda, y_train).float())
             
             loss.backward()
             optimizer.step()
@@ -345,8 +350,8 @@ def train_model(model, train_loader, test_loader, num_epochs, path, method, fold
 
         with torch.no_grad():
             for x_val, y_val in test_loader:
-                x_val = x_val.cuda()
-                y_val = y_val.cuda()
+                x_val = to_gpu(args.cuda, x_val)
+                y_val = to_gpu(args.cuda, y_val)
                 
                 model.eval()
     
@@ -533,6 +538,22 @@ def main(args,results_face, results_ecg):
     
     for n in range(repeat):
         kfold = KFold(n_splits=k_folds, random_state= seed[n], shuffle=True)
+        
+        vgg_correct_res = []
+        vgg_incorrect_res = []
+        vgg_correct_foc = []
+        vgg_incorrect_foc = []
+        
+        svm_correct_res = []
+        svm_incorrect_res = []
+        svm_correct_foc = []
+        svm_incorrect_foc = []
+
+        xgb_correct_res = []
+        xgb_incorrect_res = []
+        xgb_correct_foc = []
+        xgb_incorrect_foc = []
+        
         for fold, (train_ids, test_ids) in enumerate(kfold.split(dataset_224)):
             print(f'FOLD {fold}')
             start = datetime.now() 
@@ -553,7 +574,9 @@ def main(args,results_face, results_ecg):
             x_train_224, y_train_224 = shuffle(x_train_224, y_train_224) ## only shuffle train dataset
 
             method1 = 'Pretrained_VGG_face'
-            vgg_face = alexnet().cuda()
+            vgg_face = alexnet()
+            if args.cuda:
+                vgg_face = vgg_face.cuda()
             reset_weights_vgg(vgg_face)
             num_epochs = 150
             
@@ -562,16 +585,19 @@ def main(args,results_face, results_ecg):
                 train_model(vgg_face, train_loader_224, test_loader_224, num_epochs, results_face, method1, fold, n)  
 
             
-            ### calculate the running time of the model
-            run_time_vgg = datetime.now() - start_vgg
-            print('the training time of method {} is {}'.format(method1, run_time_vgg))
+            ### calculate the training time of the model
+            train_time = datetime.now()
+            train_time_vgg = train_time - start_vgg
+            print('the training time of method {} is {}'.format(method1, train_time_vgg))
             ### get the size of the model
             p = pickle.dumps(vgg_face)
             vgg_size = sys.getsizeof(p)
             print("the size of method {} is {}".format(method1,vgg_size ))
                 
             y_vgg_f, pred_vgg_f, prob_vgg_f, acc_vgg_f, rest_pre_vgg_f, focus_pre_vgg_f, rest_rec_vgg_f, focus_rec_vgg_f,\
-            y_vgg_f_p_r, y_vgg_f_p_f, true_rest, true_focus = predict_img(args, vgg_face, test_loader_224, num_epochs, method1, results_face, fold, n, test_ids)            
+            correct_res_vgg, incorrect_res_vgg, correct_foc_vgg, incorrect_foc_vgg = predict_img(args, vgg_face, test_loader_224, num_epochs, method1, results_face, fold, n, test_ids)            
+            test_time_vgg = datetime.now() - train_time
+            print('the testing time of method {} is {}'.format(method1, test_time_vgg))
             
             method2 = 'SVM_face'
             svm_face= svm.SVC(kernel='poly', probability=True)
@@ -587,20 +613,23 @@ def main(args,results_face, results_ecg):
                 with open(pk_svm_face, 'wb') as f1:
                     pickle.dump(svm_face, f1)
           
-            ### calculate the running time of the model
-            run_time_svm= datetime.now() - start_svm
-            print('the training time of method {} is {}'.format(method2, run_time_svm))   
+            ### calculate the training time of the model
+            train_time = datetime.now()
+            train_time_svm= train_time - start_svm
+            print('the training time of method {} is {}'.format(method2, train_time_svm))   
             ### get the size of the model
             p = pickle.dumps(svm_face)
             svm_size = sys.getsizeof(p)
             print("the size of method {} is {}".format(method2,svm_size))
                    
-            pred_svm_f, prob_svm_f, acc_svm_f, rest_pre_svm_f, focus_pre_svm_f, rest_rec_svm_f, focus_rec_svm_f, y_svm_f_p_r, y_svm_f_p_f, true_rest, true_focus = \
+            pred_svm_f, prob_svm_f, acc_svm_f, rest_pre_svm_f, focus_pre_svm_f, rest_rec_svm_f, focus_rec_svm_f, correct_res_svm, incorrect_res_svm, correct_foc_svm, incorrect_foc_svm = \
                 predict_svm_xgb(args, svm_face, x_test_224, y_test_224, results_face, method2, fold, n, test_ids)   
+            test_time_svm= datetime.now() - train_time
+            print('the testing time of method {} is {}'.format(method2, test_time_svm))
             
             method3 = 'XGBoost_face'
             xgb_face= xgb.XGBClassifier(learning_rate =0.1, n_estimators=100, max_depth=5, min_child_weight=1, gamma=0,  subsample=0.8,\
-                                  colsample_bytree=0.8, objective= 'binary:logistic', nthread=4, scale_pos_weight=1, seed=27)  
+                                  colsample_bytree=0.8, objective= 'binary:logistic', scale_pos_weight=1, seed=27)  
                 
             path_xgb_face = results_face + '{}/'.format(method3) 
             if not os.path.exists(path_xgb_face):
@@ -615,17 +644,20 @@ def main(args,results_face, results_ecg):
                 with open(pk_xgb_face, 'wb') as f2:
                     pickle.dump(xgb_face, f2)
 
-            ### calculate the running time of the model
-            run_time_xgb= datetime.now() - start_xgb
-            print('the training time of method {} is {}'.format(method3, run_time_xgb))   
+            ### calculate the training time of the model
+            train_time = datetime.now()
+            train_time_xgb= train_time - start_xgb
+            print('the training time of method {} is {}'.format(method3, train_time_xgb))   
             ### get the size of the model
             p = pickle.dumps(xgb_face)
             xgb_size = sys.getsizeof(p)
             print("the size of method {} is {}".format(method3,xgb_size))            
                    
-            pred_xgb_f, prob_xgb_f, acc_xgb_f, rest_pre_xgb_f, focus_pre_xgb_f, rest_rec_xgb_f, focus_rec_xgb_f, y_xgb_f_p_r, y_xgb_f_p_f, true_rest, true_focus = \
+            pred_xgb_f, prob_xgb_f, acc_xgb_f, rest_pre_xgb_f, focus_pre_xgb_f, rest_rec_xgb_f, focus_rec_xgb_f, correct_res_xgb, incorrect_res_xgb, correct_foc_xgb, incorrect_foc_xgb = \
                 predict_svm_xgb(args, xgb_face, x_test_224, y_test_224, results_face, method3, fold, n, test_ids)
             # print('y_test_224 == y_vgg ?', y_test_224==y_vgg_f)
+            test_time_xgb= datetime.now() - train_time
+            print('the testing time of method {} is {}'.format(method3, test_time_xgb))
             
 
             preds = [prob_vgg_f, prob_svm_f, prob_xgb_f]
@@ -677,29 +709,9 @@ def main(args,results_face, results_ecg):
             if not os.path.exists(fig_path):
                 os.makedirs(fig_path)
             plot_confusion2(y_vgg_f, y_ensem_f, args.method, fig_path, fold, n, labels = [0,1])    
-
-            ### print incorrectly classified rest images by svm, xgboost and vgg.
-            imgs_path = results_face + "/images_figures/"
-            if not os.path.exists(imgs_path):
-                os.makedirs(imgs_path)            
+          
                     
-            rest_ids = set(true_rest)-(set(true_rest)&set(y_vgg_f_p_r)|set(true_rest)&set(y_svm_f_p_r)|set(true_rest)&set(y_xgb_f_p_r))  
-            rest_not = torch.utils.data.Subset(dataset_224, list(rest_ids))
-            rest_not_loader = torch.utils.data.DataLoader(rest_not, batch_size=len(rest_ids), shuffle=False) 
-            rest_iter = iter(rest_not_loader) 
-            rest_images, labels = next(rest_iter)
-            plt.imshow(torchvision.utils.make_grid(rest_images, nrow=5).permute(1, 2, 0))
-            plt.savefig(imgs_path+'rest_repeat{}_fold{}.png'.format(n,fold))
-            plt.show()
-            ### print incorrctly classified focus imaages by svm, xgbost and vgg.
-            focus_ids= set(true_focus)-(set(true_focus)&set(y_vgg_f_p_f)|set(true_focus)&set(y_svm_f_p_f)|set(true_focus)&set(y_xgb_f_p_f)) 
-            focus_not = torch.utils.data.Subset(dataset_224, list(focus_ids))
-            focus_not_loader = torch.utils.data.DataLoader(focus_not, batch_size=len(focus_ids), shuffle=False) 
-            focus_iter = iter(focus_not_loader)
-            focus_images, labels = next(focus_iter)
-            plt.imshow(torchvision.utils.make_grid(focus_images, nrow=5).permute(1, 2, 0))
-            plt.savefig(imgs_path+'focus_repeat{}_fold{}.png'.format(n,fold))
-            plt.show()
+                
             ###################################################################
             ### use ecg signals to train 1d_cnn, vgg, svm and xgboost
             ###################################################################
@@ -713,7 +725,9 @@ def main(args,results_face, results_ecg):
             
                      
             method4 = 'Pretrained_VGG_ECG'
-            vgg_ecg = alexnet().cuda()
+            vgg_ecg = alexnet()
+            if args.cuda:
+                vgg_ecg = vgg_ecg.cuda()
             reset_weights_vgg(vgg_ecg)
     
             num_epochs = 350
@@ -721,17 +735,19 @@ def main(args,results_face, results_ecg):
             if not args.test:
                 train_model(vgg_ecg, train_loader_ecg_img, test_loader_ecg_img, num_epochs, results_ecg, method4, fold, n)
                 
-            ### calculate the running time of the model
-            run_time_vgg_ecg = datetime.now() - start_vgg_ecg
-            print('the training time of method {} is {}'.format(method4, run_time_vgg_ecg))
+            ### calculate the training time of the model
+            train_time = datetime.now()
+            train_time_vgg_ecg =  train_time - start_vgg_ecg
+            print('the training time of method {} is {}'.format(method4, train_time_vgg_ecg))
             ### get the size of the model
             p = pickle.dumps(vgg_ecg)
             vgg_ecg_size = sys.getsizeof(p)
             print("the size of method {} is {}".format(method4, vgg_ecg_size))
             y_vgg_e, pred_vgg_e, prob_vgg_e, acc_vgg_e, rest_pre_vgg_e, focus_pre_vgg_e, rest_rec_vgg_e, focus_rec_vgg_e, y_vgg_e_p_r, y_vgg_e_p_f, true_rest, true_focus =\
                 predict_img(args, vgg_ecg, test_loader_ecg_img, num_epochs, method4, results_ecg, fold, n, test_ids)            
-
-                
+            test_time_vgg_ecg =  datetime.now() - train_time
+            print('the test time of method {} is {}'.format(method4, test_time_vgg_ecg))
+            
             ### create train set and test set for 1d cnn
             train_loader_ecg = torch.utils.data.DataLoader(
                               dataset_ecg, batch_size=batch_size_ecg, sampler=train_subsampler)
@@ -741,7 +757,10 @@ def main(args,results_face, results_ecg):
             
             
             method5 = '1D_CNN_ECG'
-            cnn_ecg=CNN_1d().cuda()
+            cnn_ecg=CNN_1d()
+            if args.cuda:
+                cnn_ecg = cnn_ecg.cuda()
+                
             cnn_ecg.apply(reset_weights)
     
             num_epochs = 1500
@@ -749,16 +768,19 @@ def main(args,results_face, results_ecg):
             if not args.test:
                 train_model(cnn_ecg, train_loader_ecg, test_loader_ecg, num_epochs, results_ecg, method5, fold, n)
             
-            ### calculate the running time of the model
-            run_time_cnn_ecg = datetime.now() - start_cnn_ecg
-            print('the training time of method {} is {}'.format(method5, run_time_cnn_ecg))
+            ### calculate the training time of the model
+            train_time = datetime.now()
+            train_time_cnn_ecg = train_time - start_cnn_ecg
+            print('the training time of method {} is {}'.format(method5, train_time_cnn_ecg))
             ### get the size of the model
             p = pickle.dumps(cnn_ecg)
             cnn_ecg_size = sys.getsizeof(p)
             print("the size of method {} is {}".format(method5, cnn_ecg_size))
             y_cnn_e, pred_cnn_e, prob_cnn_e, acc_cnn_e, rest_pre_cnn_e, focus_pre_cnn_e, rest_rec_cnn_e, focus_rec_cnn_e, y_cnn_f_p_r, y_cnn_f_p_f, true_rest, true_focus =\
                 predict_img(args, cnn_ecg, test_loader_ecg, num_epochs, method5, results_ecg, fold, n, test_ids)            
-
+            test_time_cnn_ecg = datetime.now() - train_time
+            print('the testing time of method {} is {}'.format(method5, test_time_cnn_ecg))
+            
                 
             ### create train set and test set for svm and xgboost
             x_train_ecg, y_train_ecg = x_ecg[train_ids], y_ecg[train_ids]
@@ -779,15 +801,19 @@ def main(args,results_face, results_ecg):
                 with open(pk_svm_ecg, 'wb') as f3:
                     pickle.dump(svm_ecg, f3)
                                       
-            ### calculate the running time of the model
-            run_time_svm_ecg= datetime.now() - start_svm_ecg
-            print('the training time of method {} is {}'.format(method6, run_time_svm_ecg))   
+            ### calculate the training time of the model
+            train_time = datetime.now()
+            train_time_svm_ecg= train_time - start_svm_ecg
+            print('the training time of method {} is {}'.format(method6, train_time_svm_ecg))   
             ### get the size of the model
             p = pickle.dumps(svm_ecg)
             svm_ecg_size = sys.getsizeof(p)
             print("the size of method {} is {}".format(method6,svm_ecg_size))
             pred_svm_e, prob_svm_e, acc_svm_e, rest_pre_svm_e, focus_pre_svm_e, rest_rec_svm_e, focus_rec_svm_e, y_svm_f_p_r, y_svm_f_p_f, true_rest, true_focus = \
                 predict_svm_xgb(args, svm_ecg, x_test_ecg, y_test_ecg, results_ecg, method6, fold, n, test_ids)             
+            test_time_svm_ecg= datetime.now() - train_time
+            print('the testing time of method {} is {}'.format(method6, test_time_svm_ecg))
+            
             
             method7 = 'XGBoost_ECG'
             xgb_ecg= xgb.XGBClassifier(learning_rate =0.1, n_estimators=50, max_depth=5, min_child_weight=1, gamma=0,  subsample=0.8,\
@@ -804,17 +830,18 @@ def main(args,results_face, results_ecg):
                 with open(pk_xgb_ecg, 'wb') as f4:
                     pickle.dump(xgb_ecg, f4)            
             
-            ### calculate the running time of the model
-            run_time_xgb_ecg= datetime.now() - start_xgb_ecg
-            print('the training time of method {} is {}'.format(method7, run_time_xgb_ecg))   
+            ### calculate the traiing time of the model
+            train_time = datetime.now()
+            train_time_xgb_ecg= train_time - start_xgb_ecg
+            print('the training time of method {} is {}'.format(method7, train_time_xgb_ecg))   
             ### get the size of the model
             p = pickle.dumps(xgb_ecg)
             xgb_ecg_size = sys.getsizeof(p)
             print("the size of method {} is {}".format(method7,xgb_ecg_size))            
             pred_xgb_e, prob_xgb_e, acc_xgb_e, rest_pre_xgb_e, focus_pre_xgb_e, rest_rec_xgb_e, focus_rec_xgb_e, y_xgb_f_p_r, y_xgb_f_p_f, true_rest, true_focus= \
                 predict_svm_xgb(args, xgb_ecg, x_test_ecg, y_test_ecg, results_ecg, method7, fold, n, test_ids)            
-
-            
+            test_time_xgb_ecg= datetime.now() - train_time 
+            print('the testing time of method {} is {}'.format(method7, test_time_xgb_ecg)) 
             # print('y_test_ecg == y_vgg_e ?', y_test_ecg==y_vgg_e)  
             # print('y_test_ecg == y_cnn_e',y_test_ecg == y_cnn_e)
             # print('y_test_224 == y_test_ecg',y_test_224== y_test_ecg)
@@ -1040,7 +1067,34 @@ def main(args,results_face, results_ecg):
                 os.makedirs(all_fig_path)
             plot_confusion2(y_test_224, y_ensem_en, args.method, all_fig_path, fold, n, labels = [0,1])
             
-            end = datetime.now() - start          
+            end = datetime.now() - start   
+            
+            
+            vgg_correct_res.extend(correct_res_vgg)
+            vgg_incorrect_res.extend(incorrect_res_vgg)
+            vgg_correct_foc.extend(correct_foc_vgg)
+            vgg_incorrect_foc.extend(incorrect_foc_vgg)
+            
+            svm_correct_res.extend(correct_res_svm)
+            svm_incorrect_res.extend(incorrect_res_svm)
+            svm_correct_foc.extend(correct_foc_svm)
+            svm_incorrect_foc.extend(incorrect_foc_svm)
+
+            xgb_correct_res.extend(correct_res_xgb)
+            xgb_incorrect_res.extend(incorrect_res_xgb)
+            xgb_correct_foc.extend(correct_foc_xgb)
+            xgb_incorrect_foc.extend(incorrect_foc_xgb)
+            
+            
+        ### print incorrectly classified rest images by svm, xgboost and vgg.
+        imgs_path = results_face + "/classified_images/"
+        if not os.path.exists(imgs_path):
+            os.makedirs(imgs_path) 
+            
+        prediction_images(vgg_correct_res, vgg_incorrect_res, vgg_correct_foc, vgg_incorrect_foc, dataset_224, imgs_path, method1, n) 
+        prediction_images(svm_correct_res, svm_incorrect_res, svm_correct_foc, svm_incorrect_foc, dataset_224, imgs_path, method2, n)
+        prediction_images(xgb_correct_res, xgb_incorrect_res, xgb_correct_foc, xgb_incorrect_foc, dataset_224, imgs_path, method3, n)
+    
     ###########################################################################
     #### results of facial images based methods
     ### results of accuracy
@@ -1203,10 +1257,12 @@ def main(args,results_face, results_ecg):
         f.write("facial image method xgb: rest recall with mean of %0.4f, a std of %0.4f, and conf_int of (%0.4f, %0.4f)\n" % (rest_rec_xgb_mean_f, rest_rec_xgb_std_f, rest_rec_xgb_conf_f[0], rest_rec_xgb_conf_f[1]))
         f.write("facial image method xgb: focus recall with mean of %0.4f, a std of %0.4f, and conf_int of (%0.4f, %0.4f)\n" % (focus_rec_xgb_mean_f, focus_rec_xgb_std_f, focus_rec_xgb_conf_f[0], focus_rec_xgb_conf_f[1]))    
         f.write('--'*40 +'\n')
-        f.write('facial image based: the size of method vgg is {} bytes, and the runing time is {} \n'.format(vgg_size, run_time_vgg))
-        f.write('facial image based: the size of method svm is {} bytes, and the runing time is {} \n'.format(svm_size, run_time_svm))
-        f.write('facial image based: the size of method xgb is {} bytes, and the runing time is {} \n'.format(xgb_size, run_time_xgb))
-
+        f.write('facial image based: the size of method vgg is {} bytes, and the training time is {} \n'.format(vgg_size, train_time_vgg))
+        f.write('facial image based: the size of method vgg is {} bytes, and the testing time is {} \n'.format(vgg_size, test_time_vgg))
+        f.write('facial image based: the size of method svm is {} bytes, and the training time is {} \n'.format(svm_size, train_time_svm))
+        f.write('facial image based: the size of method svm is {} bytes, and the testing time is {} \n'.format(svm_size, test_time_svm))
+        f.write('facial image based: the size of method xgb is {} bytes, and the training time is {} \n'.format(xgb_size, train_time_xgb))
+        f.write('facial image based: the size of method xgb is {} bytes, and the testing time is {} \n'.format(xgb_size, test_time_xgb))
     ###########################################################################
     ### results of ecg signal based methods
     ### results of accuracy
@@ -1396,11 +1452,14 @@ def main(args,results_face, results_ecg):
         f.write("ecg signal method xgb: focus recall with mean of %0.4f, a std of %0.4f, and conf_int of (%0.4f, %0.4f)\n" % (focus_rec_xgb_mean_ecg, focus_rec_xgb_std_ecg, focus_rec_xgb_conf_ecg[0], focus_rec_xgb_conf_ecg[1]))    
 
         f.write('--'*40 +'\n')
-        f.write('ecg signal based: the size of method vgg is {} bytes, and the runing time is {} \n'.format(vgg_ecg_size, run_time_vgg_ecg))
-        f.write('ecg signal based: the size of method 1d cnn is {} bytes, and the runing time is {} \n'.format(cnn_ecg_size, run_time_cnn_ecg))
-        f.write('ecg signal based: the size of method svm is {} bytes, and the runing time is {} \n'.format(svm_ecg_size, run_time_svm_ecg))
-        f.write('ecg signal based: the size of method xgb is {} bytes, and the runing time is {} \n'.format(xgb_ecg_size, run_time_xgb_ecg))
-        
+        f.write('ecg signal based: the size of method vgg is {} bytes, and the training time is {} \n'.format(vgg_ecg_size, train_time_vgg_ecg))
+        f.write('ecg signal based: the size of method vgg is {} bytes, and the testing time is {} \n'.format(vgg_ecg_size, test_time_vgg_ecg))
+        f.write('ecg signal based: the size of method 1d cnn is {} bytes, and the training time is {} \n'.format(cnn_ecg_size, train_time_cnn_ecg))
+        f.write('ecg signal based: the size of method 1d cnn is {} bytes, and the testing time is {} \n'.format(cnn_ecg_size, test_time_cnn_ecg))
+        f.write('ecg signal based: the size of method svm is {} bytes, and the training time is {} \n'.format(svm_ecg_size, train_time_svm_ecg))
+        f.write('ecg signal based: the size of method svm is {} bytes, and the testing time is {} \n'.format(svm_ecg_size, test_time_svm_ecg))
+        f.write('ecg signal based: the size of method xgb is {} bytes, and the training time is {} \n'.format(xgb_ecg_size, train_time_xgb_ecg))
+        f.write('ecg signal based: the size of method xgb is {} bytes, and the testing time is {} \n'.format(xgb_ecg_size, test_time_xgb_ecg))        
     ###########################################################################
     ### resutls of ensemble on each method
     ### equal weight ensemble of svm
@@ -1683,7 +1742,7 @@ def main(args,results_face, results_ecg):
         f.write('--'*40 +'\n')
         f.write('the totall runing time is {} \n'.format(end))
     
-
+    
 if __name__=="__main__":
     
     parser = argparse.ArgumentParser(description='')
@@ -1697,9 +1756,14 @@ if __name__=="__main__":
                         help='')      
     parser.add_argument('--results', type=str, default='./weighted_ensemble_results_6mins/',
                         help='')  
+    parser.add_argument('--cuda', type=bool,  default=False,
+                        help='use CUDA')  
+    parser.add_argument('--device_id', type=str, default='0')
     
     args = parser.parse_args()
     
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.device_id  
+ 
     # seed_everything(args.seed)
     
     torch.cuda.is_available()

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+'''
+@author: Xiaoyan
+'''
 
 import csv
 import os
@@ -72,9 +74,9 @@ def create_datasets(batch_size, transform, image_path, image_dir, image_csv):
                                         transform = transform)
     
 
-    # for i in range(len(img_dataset)):
-    #     print(img_dataset[i][1])
-   
+#    for i in range(len(img_dataset)):
+#        print(img_dataset[i][0])
+#   
     train_set, test_set = torch.utils.data.random_split(img_dataset, [round(len(img_dataset)*0.8),round(len(img_dataset)*0.2)]) 
     
     # print("train_set is ", train_set[0])
@@ -90,15 +92,13 @@ def create_datasets(batch_size, transform, image_path, image_dir, image_csv):
 
 if __name__=="__main__":
     batch_size = 32
-    frame_size1 = (28,28)
-    frame_size2 = (224,224)
-    label_rest = 0
-    label_focus = 1
-    
-    image_path1 = './data/images_{}x{}/'.format(frame_size1[0],frame_size1[1])
-    image_dir1 = image_path1 + 'images/'
-    image_path2 = './data/images_{}x{}/'.format(frame_size2[0],frame_size2[1])
-    image_dir2 = image_path2 + 'images/'    
+ 
+    frame_size = (224,224)
+    # label_rest = 0
+    # label_focus = 1
+
+    image_path = './data/images_{}x{}/'.format(frame_size[0],frame_size[1])
+    image_dir = image_path + 'images/'    
     img_csv = 'image.csv'
 
    
@@ -107,32 +107,33 @@ if __name__=="__main__":
         # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])    
     
-    # creat_csv(img_csv, image_path1,image_dir1)
-    # creat_csv(img_csv, image_path2,image_dir2)
+
+    # creat_csv(img_csv, image_path,image_dir)
     
-    train_loader1, test_loader1, img_dataset1 = create_datasets(batch_size, transform, image_path1, image_dir1, img_csv)
-    data_iter1 = iter(train_loader1)   
-    images1, labels1 = next(data_iter1)
-    print('image size is',images1.size()[0])
-    print('the corresponding label are: ', labels1)
     
-    plt.imshow(torchvision.utils.make_grid(images1, nrow=5).permute(1, 2, 0))
+    train_loader, test_loader, img_dataset = create_datasets(batch_size, transform, image_path, image_dir, img_csv)
+    data_iter = iter(train_loader)   
+    images, labels = next(data_iter)
+    print('image size is',images.size()[0])
+    print('the corresponding label are: ', labels)
+      
+#    plt.imshow(torchvision.utils.make_grid(images, nrow=5).permute(1, 2, 0))
+#        
+#    plt.show()
+    
+    row = 2
+    fig, axs = plt.subplots(row,5, figsize=(5*row, 5*row), facecolor='w', edgecolor='k')
+    fig.subplots_adjust(hspace = .1, wspace=.001)
+    
+    axs = axs.ravel()
+    [axi.set_axis_off() for axi in axs]
+    for i in range(1):    
+        axs[i].imshow(img_dataset[i][0].permute(1, 2, 0))
+        axs[i].set_title(str(250+i))
+#        axs[i].axis('off')
+    
+    
     plt.show()
-    
-    train_loader2, test_loader2, img_dataset2 = create_datasets(batch_size, transform, image_path2, image_dir2, img_csv)
-    data_iter2 = iter(train_loader2)   
-    images2, labels2 = next(data_iter2)
-    print('image size is',images2.size()[0])
-    print('the corresponding label are: ', labels2)
-    
-    plt.imshow(torchvision.utils.make_grid(images2, nrow=5).permute(1, 2, 0))
-        
-    plt.show()
-    
-  
-    
-    
-   
   
     
 

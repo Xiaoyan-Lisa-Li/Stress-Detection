@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+'''
+@author: Xiaoyan
+'''
 
 import torch
 import facial_data_process
@@ -159,7 +161,7 @@ class CNN_1d(nn.Module):
         x = self.conv3_drop(self.maxpool3(self.conv3_bn(F.relu(self.conv3(x)))))
         x_0 = x.view(-1, 320) ###reshape 3 seconds (-1,320); 6seconds view(-1, 672);
         x_1 = F.relu(self.dense1(x_0))
-        x = F.sigmoid(self.dense2(x_1))
+        x = torch.sigmoid(self.dense2(x_1))
         return x, x_0
 
 # net = CNN_1d()
@@ -174,8 +176,8 @@ class alexnet(nn.Module):
         self.features = nn.Sequential(*list(self.net.children())[:-1])
         for p in self.net.features.parameters():
             p.requires_grad=False
-        # for p in self.net.avgpool.parameters():
-        #     p.requires_grad=False
+        for p in self.net.avgpool.parameters():
+            p.requires_grad=False
         # for p in self.net.classifier[:-5].parameters():
         #     p.requires_grad=False        
         self.net.classifier[-1] = nn.Linear(4096, num_classes)
@@ -183,12 +185,17 @@ class alexnet(nn.Module):
        
     def forward(self,input):
         x0 = self.net(input)
-        x = F.sigmoid(x0)
+        x = torch.sigmoid(x0)
         x_f = self.features(input)
         x_f = x_f.view(-1,25088)
         return x, x_f
         
 alex_net = alexnet()
 print(alex_net)
+pytorch_total_params = sum(p.numel() for p in alex_net.parameters())
+print(pytorch_total_params)
+pytorch_total_params = sum(p.numel() for p in alex_net.parameters() if p.requires_grad)
+print(pytorch_total_params)
+
     
 

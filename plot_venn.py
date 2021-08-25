@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+'''
+@author: Xiaoyan
+'''
 from venn import venn
 from matplotlib_venn import venn2, venn3
 from matplotlib import pyplot as plt
@@ -7,24 +10,20 @@ import pickle
 import numpy as np
 import os
 
-vgg_pred_f = np.load('./weighted_ensemble_results_6mins/facial_image/Pretrained_VGG_face/pred_pkl/Pretrained_VGG_face_repeat1_fold4_pred_index2.pkl', allow_pickle=True)
-svm_pred_f = np.load('./weighted_ensemble_results_6mins/facial_image/SVM_face/pred_pkl/SVM_face_repeat1_fold4_pred_index2.pkl', allow_pickle=True)
-xgboost_pred_f = np.load('./weighted_ensemble_results_6mins/facial_image/XGBoost_face/pred_pkl/XGBoost_face_repeat1_fold4_pred_index2.pkl',allow_pickle=True)
-true_f = np.load('./weighted_ensemble_results_6mins/facial_image/SVM_face/pred_pkl/SVM_face_repeat1_fold4_true_index.pkl', allow_pickle=True)
+vgg_pred_f = np.load('./weighted_ensemble_results_6mins/facial_image/Pretrained_VGG_face/pred_pkl/Pretrained_VGG_face_repeat2_fold0_pred_index2.pkl', allow_pickle=True)
+svm_pred_f = np.load('./weighted_ensemble_results_6mins/facial_image/SVM_face/pred_pkl/SVM_face_repeat2_fold0_pred_index2.pkl', allow_pickle=True)
+xgboost_pred_f = np.load('./weighted_ensemble_results_6mins/facial_image/XGBoost_face/pred_pkl/XGBoost_face_repeat2_fold0_pred_index2.pkl',allow_pickle=True)
+true_f = np.load('./weighted_ensemble_results_6mins/facial_image/SVM_face/pred_pkl/SVM_face_repeat2_fold0_true_index.pkl', allow_pickle=True)
 svm_pred_f = np.array(svm_pred_f)
 vgg_pred_f = np.array(vgg_pred_f)
 xgboost_pred_f = np.array(xgboost_pred_f)
 
-print('svm_pred_f = ',len(svm_pred_f[0]))
-print('vgg_pred_f = ',vgg_pred_f[0])
-print('xgboost_pred_f = ',len(xgboost_pred_f[0]))
-print('true_f = ',true_f)
 
-cnn_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/1D_CNN_ECG/pred_pkl/1D_CNN_ECG_repeat1_fold4_pred_index2.pkl', allow_pickle=True)
-vgg_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/Pretrained_VGG_ECG/pred_pkl/Pretrained_VGG_ECG_repeat1_fold4_pred_index2.pkl', allow_pickle=True)
-svm_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/SVM_ECG/pred_pkl/SVM_ECG_repeat1_fold4_pred_index2.pkl', allow_pickle=True)
-xgboost_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/XGBoost_ECG/pred_pkl/XGBoost_ECG_repeat1_fold4_pred_index2.pkl',allow_pickle=True)
-true_e = np.load('./weighted_ensemble_results_6mins/ecg/SVM_ECG/pred_pkl/SVM_ECG_repeat1_fold4_true_index.pkl', allow_pickle=True)
+cnn_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/1D_CNN_ECG/pred_pkl/1D_CNN_ECG_repeat2_fold0_pred_index2.pkl', allow_pickle=True)
+vgg_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/Pretrained_VGG_ECG/pred_pkl/Pretrained_VGG_ECG_repeat2_fold0_pred_index2.pkl', allow_pickle=True)
+svm_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/SVM_ECG/pred_pkl/SVM_ECG_repeat2_fold0_pred_index2.pkl', allow_pickle=True)
+xgboost_pred_e = np.load('./weighted_ensemble_results_6mins/ecg/XGBoost_ECG/pred_pkl/XGBoost_ECG_repeat2_fold0_pred_index2.pkl',allow_pickle=True)
+true_e = np.load('./weighted_ensemble_results_6mins/ecg/SVM_ECG/pred_pkl/SVM_ECG_repeat2_fold0_true_index.pkl', allow_pickle=True)
 cnn_pred_e = np.array(cnn_pred_e)
 vgg_pred_e = np.array(vgg_pred_e)
 svm_pred_e = np.array(svm_pred_e)
@@ -35,13 +34,20 @@ rest_num = len(true_f[0])
 focus_num = len(true_f[1])
 print('rest_num=',rest_num)
 print('focus_num=',focus_num)
+##
+#print('svm_pred_e_rest = ',svm_pred_e[0])
+#print('svm_pred_e_rest = ',len(svm_pred_e[0]))
+#print('svm_pred_e_focus = ',svm_pred_e[1])
+#print('svm_pred_e_focus = ',len(svm_pred_e[1]))
 
+#print('xgboost_pred_e_rest = ',xgboost_pred_e[0])
+#print('xgboost_pred_e_rest = ',len(xgboost_pred_e[0]))
+#print('xgboost_pred_e_focus = ',xgboost_pred_e[1])
+#print('xgboost_pred_e_focus = ',len(xgboost_pred_e[1]))
 
-#def plot_venn_3(title):
-#    venn3([set(vgg_pred_f[0]), set(svm_pred_f[0]), set(xgboost_pred_f[0])], ('VGG', 'SVM', 'XGBoost'))
-##    venn2([set(svm_pred_f), set(xgboost_pred_f)], ('SVM', 'XGBoost'))
-#    plt.title(title)
-#    plt.show()
+#print('vgg_pred_f = ',vgg_pred_f[0])
+#print('xgboost_pred_e = ',len(xgboost_pred_e[0]))
+print('true_e = ',true_e)
     
 def plot_venn(preds, title, name):
     venn(preds)
