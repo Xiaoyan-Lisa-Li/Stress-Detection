@@ -1752,11 +1752,11 @@ if __name__=="__main__":
                         help='')
     parser.add_argument('--method', type=str, default='ensemble',
                         help='') 
-    parser.add_argument('--test', type=bool, default=True,
+    parser.add_argument('--test', type=bool, default=False,
                         help='')      
     parser.add_argument('--results', type=str, default='./weighted_ensemble_results_6mins/',
                         help='')  
-    parser.add_argument('--cuda', type=bool,  default=False,
+    parser.add_argument('--cuda', type=bool,  default=True,
                         help='use CUDA')  
     parser.add_argument('--device_id', type=str, default='0')
     
