@@ -902,7 +902,7 @@ def main(args,results_face, results_ecg):
             plot_confusion2(y_vgg_e, y_ensem_e, args.method, fig_path, fold, n, labels = [0,1])  
             
             ###################################################################
-            ## ensemble on each method.
+            ## ensemble on each model.
             ### ensemble on svm
             preds = [prob_svm_f, prob_svm_e]
             acc_ensem_s0, y_ensem_svm0, rest_true_svm0, focus_false_svm0, focus_true_svm0, rest_false_svm0 = equal_wight_ensemble(preds, y_test_224)
@@ -1461,7 +1461,7 @@ def main(args,results_face, results_ecg):
         f.write('ecg signal based: the size of method xgb is {} bytes, and the training time is {} \n'.format(xgb_ecg_size, train_time_xgb_ecg))
         f.write('ecg signal based: the size of method xgb is {} bytes, and the testing time is {} \n'.format(xgb_ecg_size, test_time_xgb_ecg))        
     ###########################################################################
-    ### resutls of ensemble on each method
+    ### resutls of ensemble on each model
     ### equal weight ensemble of svm
     acc_ensem_mean_svm0 = np.array(acc_ensem_svm0).mean()
     acc_ensem_std_svm0 = np.array(acc_ensem_svm0).std()
@@ -1752,11 +1752,11 @@ if __name__=="__main__":
                         help='')
     parser.add_argument('--method', type=str, default='ensemble',
                         help='') 
-    parser.add_argument('--test', type=bool, default=False,
+    parser.add_argument('--test', type=bool, default=True,
                         help='')      
     parser.add_argument('--results', type=str, default='./weighted_ensemble_results_6mins/',
                         help='')  
-    parser.add_argument('--cuda', type=bool,  default=True,
+    parser.add_argument('--cuda', type=bool,  default=False,
                         help='use CUDA')  
     parser.add_argument('--device_id', type=str, default='0')
     
