@@ -6,7 +6,9 @@
 	run `ecg_data_process.py` to create ECG data.
 # Stress-Detection
 	Method 1: Stress detection using facial images	
-	Method 2: Stress detection using ECG signals.  	
+		run `main_facial_images.py`
+	Method 2: Stress detection using ECG signals.  
+		run `main_ECG.py`
 	Method 3: Weighted average ensemble.
 	run `main.py` to produce all results.
 	
