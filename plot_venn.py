@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 25 12:17:56 2021
 
-@author: xiaoyan
-"""
 from venn import venn
 from matplotlib_venn import venn2, venn3
 from matplotlib import pyplot as plt

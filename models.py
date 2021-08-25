@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 25 12:17:56 2021
-
-@author: xiaoyan
-"""
 
 import torch
 import facial_data_process
