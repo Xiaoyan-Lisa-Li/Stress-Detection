@@ -96,7 +96,7 @@ def create_ecg_image(time_s, window_s):
     new_hz = 100
     window_size = window_s
     
-    path_mat = './data/tetrisBiopac/'
+    path_mat = './data/ECG/'
     path_img = './data/ecg_img/images/'
     
     if not os.path.exists(path_img):
